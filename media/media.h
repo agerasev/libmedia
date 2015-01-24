@@ -1,6 +1,6 @@
 #pragma once
 
-/* event types */
+/* Event types */
 #define MEDIA_QUIT              0x01
 
 #define MEDIA_INIT_SURFACE      0x02
@@ -12,8 +12,12 @@
 
 #define MEDIA_SAVE_STATE        0x08
 
-#define MEDIA_MOTION            0x81
-#define MEDIA_SENSOR            0x82
+#define MEDIA_MOTION            0x10
+
+/* Actions */
+#define MEDIA_ACTION_UP         0x01
+#define MEDIA_ACTION_DOWN       0x02
+#define MEDIA_ACTION_MOVE       0x03
 
 typedef struct Media_IVec2
 {
@@ -30,6 +34,7 @@ Media_FVec3;
 typedef struct Media_Event
 {
 	unsigned int type;
+	unsigned int action;
 	Media_FVec3 value;
 	Media_IVec2 rect;
 } 

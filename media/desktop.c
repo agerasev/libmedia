@@ -16,8 +16,6 @@ struct __Context
 	int height;
 	
 	int mouse[3];
-	int mx,my;
-	int motion;
 	
 	void(*event_listener)(const Media_Event*,void*);
 	void *event_listener_data;
@@ -128,38 +126,40 @@ static void handleEvent(const SDL_Event *event)
 		}
 		break;
 	case SDL_MOUSEMOTION:
-		__context.motion = 1;
-		__context.mx = event->motion.x;
-		__context.my = event->motion.y;
+		if(__context.mouse[0])
+		{
+			m_event.type = MEDIA_MOTION;
+			m_event.action = MEDIA_ACTION_MOVE;
+			m_event.rect.x = event->motion.x;
+		  m_event.rect.y = event->motion.y;
+			pushEvent(&m_event);
+		}
 		break;
 	case SDL_MOUSEBUTTONDOWN:
 		if(event->button.button == SDL_BUTTON_LEFT)
 		{
 			__context.mouse[0] = 1;
+			m_event.type = MEDIA_MOTION;
+			m_event.action = MEDIA_ACTION_DOWN;
+			m_event.rect.x = event->button.x;
+		  m_event.rect.y = event->button.y;
+			pushEvent(&m_event);
 		}
 		break;
 	case SDL_MOUSEBUTTONUP:
 		if(event->button.button == SDL_BUTTON_LEFT)
 		{
 			__context.mouse[0] = 0;
+			m_event.type = MEDIA_MOTION;
+			m_event.action = MEDIA_ACTION_UP;
+			m_event.rect.x = event->button.x;
+		  m_event.rect.y = event->button.y;
+			pushEvent(&m_event);
 		}
 		break;
 	default:
 		break;
 	}
-}
-
-static void handleMotion()
-{
-	Media_Event m_event;
-	if(__context.mouse[0] && __context.motion)
-	{
-		m_event.type = MEDIA_MOTION;
-		m_event.rect.x = __context.mx;
-    m_event.rect.y = __context.my;
-		pushEvent(&m_event);
-	}
-	__context.motion = 0;
 }
 
 void Media_handleEvents()
@@ -169,7 +169,6 @@ void Media_handleEvents()
 	{
 		handleEvent(&event);
 	}
-	handleMotion();
 }
 
 void Media_waitForEvent()
@@ -179,7 +178,6 @@ void Media_waitForEvent()
 	{
 		handleEvent(&event);
 	}
-	// handleMotion();
 }
 
 void Media_setEventListener(void (*listener)(const Media_Event*,void*), void *data)

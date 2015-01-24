@@ -68,14 +68,38 @@ static void pushEvent(const Media_Event *event)
 static int32_t engine_handle_input(struct android_app* app, AInputEvent* event)
 {
 	Media_Event m_event;
-	if(AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) 
-	{
+  switch(AInputEvent_getType(event))
+  {
+	case AINPUT_EVENT_TYPE_MOTION:
 		m_event.type = MEDIA_MOTION;
+		switch(AInputEvent_getSource(event))
+		{
+		case AINPUT_SOURCE_TOUCHSCREEN:
+			switch(AKeyEvent_getAction(event) & AMOTION_EVENT_ACTION_MASK)
+			{
+			case AMOTION_EVENT_ACTION_DOWN:
+				m_event.action = MEDIA_ACTION_DOWN;
+				break;
+			case AMOTION_EVENT_ACTION_UP:
+				m_event.action = MEDIA_ACTION_UP;
+				break;
+			case AMOTION_EVENT_ACTION_MOVE:
+				m_event.action = MEDIA_ACTION_MOVE;
+				break;
+			}
+			break;
+		}
 		m_event.rect.x = AMotionEvent_getX(event, 0);
-    m_event.rect.y = AMotionEvent_getY(event, 0);
+		m_event.rect.y = AMotionEvent_getY(event, 0);
 		pushEvent(&m_event);
 		return 1;
-	}
+	/*
+	case AINPUT_EVENT_TYPE_KEY:
+		// handle key input...
+		return 1;
+	*/
+  }
+  
 	return 0;
 }
 
