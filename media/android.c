@@ -15,7 +15,7 @@
  *
  */
 
-#define DEBUG
+// #ifdef __ANDROID__
 
 #include "media.h"
 
@@ -29,8 +29,8 @@
 #include <android/log.h>
 #include <android_native_app_glue.h>
 
-#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "mynativeapp", __VA_ARGS__))
-#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "mynativeapp", __VA_ARGS__))
+#define LOGI(...) (printInfo(__VA_ARGS__))
+#define LOGW(...) (printWarn(__VA_ARGS__))
 
 static int  initDisplay();
 static void termDisplay();
@@ -39,27 +39,43 @@ struct engine
 {
 	struct android_app* app;
 	
-	void(*event_listener)(const Media_Event*,void*);
-	void *event_listener_data;
+	void(*app_func)    (const Media_AppEvent*,    void*);
+	void(*surface_func)(const Media_SurfaceEvent*,void*);
+	void(*motion_func) (const Media_MotionEvent*, void*);
+	void(*sensor_func) (const Media_SensorEvent*, void*);
+	void *listeners_data;
 	
 	void(*renderer)(void*);
 	void *renderer_data;
 	
 	EGLDisplay display;
-  EGLSurface surface;
-  EGLContext context;
-  int32_t width;
-  int32_t height;
-  int frame_counter;
+	EGLSurface surface;
+	EGLContext context;
+	int32_t width;
+	int32_t height;
+	int frame_counter;
+  
+	ASensorManager* sensorManager;
+	const ASensor* accelerometerSensor;
+	ASensorEventQueue* sensorEventQueue;
 };
 static struct engine engine;
 
-static void pushEvent(const Media_Event *event)
+static void pushAppEvent(const Media_AppEvent *event) 
 {
-	if(engine.event_listener != NULL)
-	{
-		engine.event_listener(event,engine.event_listener_data);
-	}
+	if(engine.app_func) { engine.app_func(event,engine.listeners_data); }
+}
+static void pushSurfaceEvent(const Media_SurfaceEvent *event) 
+{
+	if(engine.surface_func) { engine.surface_func(event,engine.listeners_data); }
+}
+static void pushMotionEvent(const Media_MotionEvent *event) 
+{
+	if(engine.motion_func) { engine.motion_func(event,engine.listeners_data); }
+}
+static void pushSensorEvent(const Media_SensorEvent *event) 
+{
+	if(engine.sensor_func) { engine.sensor_func(event,engine.listeners_data); }
 }
 
 /**
@@ -67,31 +83,34 @@ static void pushEvent(const Media_Event *event)
  */
 static int32_t engine_handle_input(struct android_app* app, AInputEvent* event)
 {
-	Media_Event m_event;
-  switch(AInputEvent_getType(event))
-  {
+	Media_MotionEvent motion_event;
+	int32_t action;
+	switch(AInputEvent_getType(event))
+	{
 	case AINPUT_EVENT_TYPE_MOTION:
-		m_event.type = MEDIA_MOTION;
+		motion_event.type = MEDIA_MOTION;
 		switch(AInputEvent_getSource(event))
 		{
 		case AINPUT_SOURCE_TOUCHSCREEN:
-			switch(AKeyEvent_getAction(event) & AMOTION_EVENT_ACTION_MASK)
+			action = AKeyEvent_getAction(event);
+			motion_event.index = action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK;
+			switch(action & AMOTION_EVENT_ACTION_MASK)
 			{
 			case AMOTION_EVENT_ACTION_DOWN:
-				m_event.action = MEDIA_ACTION_DOWN;
+				motion_event.action = MEDIA_ACTION_DOWN;
 				break;
 			case AMOTION_EVENT_ACTION_UP:
-				m_event.action = MEDIA_ACTION_UP;
+				motion_event.action = MEDIA_ACTION_UP;
 				break;
 			case AMOTION_EVENT_ACTION_MOVE:
-				m_event.action = MEDIA_ACTION_MOVE;
+				motion_event.action = MEDIA_ACTION_MOVE;
 				break;
 			}
 			break;
 		}
-		m_event.rect.x = AMotionEvent_getX(event, 0);
-		m_event.rect.y = AMotionEvent_getY(event, 0);
-		pushEvent(&m_event);
+		motion_event.x = AMotionEvent_getX(event, 0);
+		motion_event.y = AMotionEvent_getY(event, 0);
+		pushMotionEvent(&motion_event);
 		return 1;
 	/*
 	case AINPUT_EVENT_TYPE_KEY:
@@ -108,45 +127,47 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event)
  */
 static void engine_handle_cmd(struct android_app* app, int32_t cmd) 
 {
-	Media_Event event;
-	int call_back = 1;
+	Media_AppEvent app_event;
+	Media_SurfaceEvent surface_event;
+#ifdef DEBUG
 	printInfo("Command %d\n",cmd);
+#endif
 	switch(cmd) 
 	{
-		case APP_CMD_SAVE_STATE:
-			event.type = MEDIA_SAVE_STATE;
-			pushEvent(&event);
-			break;
-		case APP_CMD_INIT_WINDOW:
-			initDisplay();
-			event.type = MEDIA_INIT_SURFACE;
-			pushEvent(&event);
-			event.type = MEDIA_RESIZE_SURFACE;
-			event.rect.x = engine.width;
-			event.rect.y = engine.height;
-			pushEvent(&event);
-			break;
-		case APP_CMD_TERM_WINDOW:
-			termDisplay();
-			event.type = MEDIA_TERM_SURFACE;
-			pushEvent(&event);
-			break;
-		case APP_CMD_CONFIG_CHANGED:
-			engine.frame_counter = 4;
-		case APP_CMD_GAINED_FOCUS:
-			event.type = MEDIA_SHOWN;
-			pushEvent(&event);
-			break;
-		case APP_CMD_LOST_FOCUS:
-			event.type = MEDIA_HIDDEN;
-			pushEvent(&event);
-			break;
-		case APP_CMD_DESTROY:
-			event.type = MEDIA_QUIT;
-			pushEvent(&event);
-			break;
-		default:
-			break;
+	case APP_CMD_SAVE_STATE:
+		app_event.type = MEDIA_APP_SAVESTATE;
+		pushAppEvent(&app_event);
+		break;
+	case APP_CMD_INIT_WINDOW:
+		initDisplay();
+		surface_event.type = MEDIA_SURFACE_INIT;
+		pushSurfaceEvent(&surface_event);
+		surface_event.type = MEDIA_SURFACE_RESIZE;
+		surface_event.width = engine.width;
+		surface_event.height = engine.height;
+		pushSurfaceEvent(&surface_event);
+		break;
+	case APP_CMD_TERM_WINDOW:
+		termDisplay();
+		surface_event.type = MEDIA_SURFACE_TERM;
+		pushSurfaceEvent(&surface_event);
+		break;
+	case APP_CMD_CONFIG_CHANGED:
+		engine.frame_counter = 4;
+	case APP_CMD_GAINED_FOCUS:
+		app_event.type = MEDIA_APP_SHOW;
+		pushAppEvent(&app_event);
+		break;
+	case APP_CMD_LOST_FOCUS:
+		app_event.type = MEDIA_APP_HIDE;
+		pushAppEvent(&app_event);
+		break;
+	case APP_CMD_DESTROY:
+		app_event.type = MEDIA_APP_QUIT;
+		pushAppEvent(&app_event);
+		break;
+	default:
+		break;
 	}
 }
 
@@ -166,23 +187,41 @@ void android_main(struct android_app* state)
 	state->onInputEvent = engine_handle_input;
 	engine.app = state;
 	
+	// Prepare to monitor accelerometer
+  engine.sensorManager = ASensorManager_getInstance();
+  engine.accelerometerSensor = ASensorManager_getDefaultSensor(engine.sensorManager,ASENSOR_TYPE_ACCELEROMETER);
+  engine.sensorEventQueue = ASensorManager_createEventQueue(engine.sensorManager,state->looper, LOOPER_ID_USER, NULL, NULL);
+	
 	main();
 }
 
 int Media_init()
 {
-	// LOGI("Application started\n");
+#ifdef DEBUG
+	LOGI("Application started\n");
+#endif
 }
 
 void Media_quit()
 {
-	// LOGI("Application exited\n");
+#ifdef DEBUG
+	LOGI("Application exited\n");
+#endif
 }
 
-void Media_setEventListener(void (*listener)(const Media_Event*, void*), void *data)
+void Media_setEventListeners(
+    void (*app_func)    (const Media_AppEvent*,    void*), 
+    void (*surface_func)(const Media_SurfaceEvent*,void*), 
+    void (*motion_func) (const Media_MotionEvent*, void*), 
+    void (*sensor_func) (const Media_SensorEvent*, void*), 
+    void *data
+)
 {
-	engine.event_listener = listener;
-	engine.event_listener_data = data;
+	engine.app_func = app_func;
+	engine.surface_func = surface_func;
+	engine.motion_func = motion_func;
+	engine.sensor_func = sensor_func;
+	engine.listeners_data = data;
 }
 
 static void engine_handle_events(int mode)
@@ -192,11 +231,11 @@ static void engine_handle_events(int mode)
 		engine.frame_counter--;
 		if(engine.frame_counter == 0)
 		{
-			Media_Event event;
-			event.type = MEDIA_RESIZE_SURFACE;
-			eglQuerySurface(engine.display, engine.surface, EGL_WIDTH, &(event.rect.x));
-			eglQuerySurface(engine.display, engine.surface, EGL_HEIGHT, &(event.rect.y));
-			pushEvent(&event);
+			Media_SurfaceEvent event;
+			event.type = MEDIA_SURFACE_RESIZE;
+			eglQuerySurface(engine.display, engine.surface, EGL_WIDTH, &(event.width));
+			eglQuerySurface(engine.display, engine.surface, EGL_HEIGHT, &(event.height));
+			pushSurfaceEvent(&event);
 		}
 	}
 	
@@ -221,6 +260,25 @@ static void engine_handle_events(int mode)
 		if(mode)
 		{
 			break;
+		}
+		
+		// If a sensor has data, process it now.
+		if (ident == LOOPER_ID_USER) 
+		{
+			if (engine.accelerometerSensor != NULL) 
+			{
+				Media_SensorEvent sensor_event;
+				ASensorEvent event;
+				while(ASensorEventQueue_getEvents(engine.sensorEventQueue,&event,1) > 0) 
+				{
+					sensor_event.type = MEDIA_SENSOR;
+					sensor_event.sensor = MEDIA_SENSOR_ACCELEROMETER;
+					sensor_event.x = event.acceleration.x;
+					sensor_event.y = event.acceleration.y;
+					sensor_event.z = event.acceleration.z;
+					pushSensorEvent(&sensor_event);
+				}
+			}
 		}
 		
 		// Check if we are exiting.
@@ -292,8 +350,11 @@ int initDisplay()
 	
 	context = eglCreateContext(display, config, NULL, attrib_list);
 
-	if (eglMakeCurrent(display, surface, surface, context) == EGL_FALSE) {
+	if (eglMakeCurrent(display, surface, surface, context) == EGL_FALSE) 
+	{
+#ifdef DEBUG
 		LOGW("Unable to eglMakeCurrent");
+#endif
 		return -1;
 	}
 
@@ -348,3 +409,20 @@ void Media_renderFrame()
 	}
 	eglSwapBuffers(engine.display, engine.surface);
 }
+
+int Media_enableSensor(Media_SensorType type, unsigned long rate)
+{
+	if(type == MEDIA_SENSOR_ACCELEROMETER && engine.accelerometerSensor != NULL) {
+		ASensorEventQueue_enableSensor(engine.sensorEventQueue,engine.accelerometerSensor);
+		ASensorEventQueue_setEventRate(engine.sensorEventQueue,engine.accelerometerSensor,rate);
+	}
+}
+
+int Media_disableSensor(Media_SensorType type)
+{
+	if(type == MEDIA_SENSOR_ACCELEROMETER && engine.accelerometerSensor != NULL) {
+		ASensorEventQueue_disableSensor(engine.sensorEventQueue,engine.accelerometerSensor);
+	}
+}
+
+// #endif
