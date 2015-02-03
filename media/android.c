@@ -15,7 +15,7 @@
  *
  */
 
-// #ifdef __ANDROID__
+#ifdef __ANDROID__
 
 #include "media.h"
 
@@ -39,15 +39,6 @@ struct engine
 {
 	struct android_app* app;
 	
-	void(*app_func)    (const Media_AppEvent*,    void*);
-	void(*surface_func)(const Media_SurfaceEvent*,void*);
-	void(*motion_func) (const Media_MotionEvent*, void*);
-	void(*sensor_func) (const Media_SensorEvent*, void*);
-	void *listeners_data;
-	
-	void(*renderer)(void*);
-	void *renderer_data;
-	
 	EGLDisplay display;
 	EGLSurface surface;
 	EGLContext context;
@@ -59,247 +50,25 @@ struct engine
 	const ASensor* accelerometerSensor;
 	ASensorEventQueue* sensorEventQueue;
 };
-static struct engine engine;
 
-static void pushAppEvent(const Media_AppEvent *event) 
+static void pushAppEvent(Media_App *app, const Media_AppEvent *event) 
 {
-	if(engine.app_func) { engine.app_func(event,engine.listeners_data); }
+	if(app->listeners.app) { app->listeners.app(app,event); }
 }
-static void pushSurfaceEvent(const Media_SurfaceEvent *event) 
+static void pushSurfaceEvent(Media_App *app, const Media_SurfaceEvent *event) 
 {
-	if(engine.surface_func) { engine.surface_func(event,engine.listeners_data); }
+	if(app->listeners.surface) { app->listeners.surface(app,event); }
 }
-static void pushMotionEvent(const Media_MotionEvent *event) 
+static void pushMotionEvent(Media_App *app, const Media_MotionEvent *event) 
 {
-	if(engine.motion_func) { engine.motion_func(event,engine.listeners_data); }
+	if(app->listeners.motion) { app->listeners.motion(app,event); }
 }
-static void pushSensorEvent(const Media_SensorEvent *event) 
+static void pushSensorEvent(Media_App *app, const Media_SensorEvent *event) 
 {
-	if(engine.sensor_func) { engine.sensor_func(event,engine.listeners_data); }
-}
-
-/**
- * Process the next input event.
- */
-static int32_t engine_handle_input(struct android_app* app, AInputEvent* event)
-{
-	Media_MotionEvent motion_event;
-	int32_t action;
-	switch(AInputEvent_getType(event))
-	{
-	case AINPUT_EVENT_TYPE_MOTION:
-		motion_event.type = MEDIA_MOTION;
-		switch(AInputEvent_getSource(event))
-		{
-		case AINPUT_SOURCE_TOUCHSCREEN:
-			action = AKeyEvent_getAction(event);
-			motion_event.index = action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK;
-			switch(action & AMOTION_EVENT_ACTION_MASK)
-			{
-			case AMOTION_EVENT_ACTION_DOWN:
-				motion_event.action = MEDIA_ACTION_DOWN;
-				break;
-			case AMOTION_EVENT_ACTION_UP:
-				motion_event.action = MEDIA_ACTION_UP;
-				break;
-			case AMOTION_EVENT_ACTION_MOVE:
-				motion_event.action = MEDIA_ACTION_MOVE;
-				break;
-			}
-			break;
-		}
-		motion_event.x = AMotionEvent_getX(event, 0);
-		motion_event.y = AMotionEvent_getY(event, 0);
-		pushMotionEvent(&motion_event);
-		return 1;
-	/*
-	case AINPUT_EVENT_TYPE_KEY:
-		// handle key input...
-		return 1;
-	*/
-  }
-  
-	return 0;
+	if(app->listeners.sensor) { app->listeners.sensor(app,event); }
 }
 
-/**
- * Process the next main command.
- */
-static void engine_handle_cmd(struct android_app* app, int32_t cmd) 
-{
-	Media_AppEvent app_event;
-	Media_SurfaceEvent surface_event;
-#ifdef DEBUG
-	printInfo("Command %d\n",cmd);
-#endif
-	switch(cmd) 
-	{
-	case APP_CMD_SAVE_STATE:
-		app_event.type = MEDIA_APP_SAVESTATE;
-		pushAppEvent(&app_event);
-		break;
-	case APP_CMD_INIT_WINDOW:
-		initDisplay();
-		surface_event.type = MEDIA_SURFACE_INIT;
-		pushSurfaceEvent(&surface_event);
-		surface_event.type = MEDIA_SURFACE_RESIZE;
-		surface_event.width = engine.width;
-		surface_event.height = engine.height;
-		pushSurfaceEvent(&surface_event);
-		break;
-	case APP_CMD_TERM_WINDOW:
-		termDisplay();
-		surface_event.type = MEDIA_SURFACE_TERM;
-		pushSurfaceEvent(&surface_event);
-		break;
-	case APP_CMD_CONFIG_CHANGED:
-		engine.frame_counter = 4;
-	case APP_CMD_GAINED_FOCUS:
-		app_event.type = MEDIA_APP_SHOW;
-		pushAppEvent(&app_event);
-		break;
-	case APP_CMD_LOST_FOCUS:
-		app_event.type = MEDIA_APP_HIDE;
-		pushAppEvent(&app_event);
-		break;
-	case APP_CMD_DESTROY:
-		app_event.type = MEDIA_APP_QUIT;
-		pushAppEvent(&app_event);
-		break;
-	default:
-		break;
-	}
-}
-
-/**
- * This is the main entry point of a native application that is using
- * android_native_app_glue.  It runs in its own thread, with its own
- * event loop for receiving input events and doing other things.
- */
-void android_main(struct android_app* state) 
-{
-	// Make sure glue isn't stripped.
-	app_dummy();
-	
-	memset(&engine,0,sizeof(struct engine));
-	state->userData = &engine;
-	state->onAppCmd = engine_handle_cmd;
-	state->onInputEvent = engine_handle_input;
-	engine.app = state;
-	
-	// Prepare to monitor accelerometer
-  engine.sensorManager = ASensorManager_getInstance();
-  engine.accelerometerSensor = ASensorManager_getDefaultSensor(engine.sensorManager,ASENSOR_TYPE_ACCELEROMETER);
-  engine.sensorEventQueue = ASensorManager_createEventQueue(engine.sensorManager,state->looper, LOOPER_ID_USER, NULL, NULL);
-	
-	main();
-}
-
-int Media_init()
-{
-#ifdef DEBUG
-	LOGI("Application started\n");
-#endif
-}
-
-void Media_quit()
-{
-#ifdef DEBUG
-	LOGI("Application exited\n");
-#endif
-}
-
-void Media_setEventListeners(
-    void (*app_func)    (const Media_AppEvent*,    void*), 
-    void (*surface_func)(const Media_SurfaceEvent*,void*), 
-    void (*motion_func) (const Media_MotionEvent*, void*), 
-    void (*sensor_func) (const Media_SensorEvent*, void*), 
-    void *data
-)
-{
-	engine.app_func = app_func;
-	engine.surface_func = surface_func;
-	engine.motion_func = motion_func;
-	engine.sensor_func = sensor_func;
-	engine.listeners_data = data;
-}
-
-static void engine_handle_events(int mode)
-{
-	if(engine.frame_counter > 0)
-	{
-		engine.frame_counter--;
-		if(engine.frame_counter == 0)
-		{
-			Media_SurfaceEvent event;
-			event.type = MEDIA_SURFACE_RESIZE;
-			eglQuerySurface(engine.display, engine.surface, EGL_WIDTH, &(event.width));
-			eglQuerySurface(engine.display, engine.surface, EGL_HEIGHT, &(event.height));
-			pushSurfaceEvent(&event);
-		}
-	}
-	
-	// Read all pending events.
-	int ident;
-	int events;
-	struct android_poll_source* source;
-
-	// If not animating, we will block forever waiting for events.
-	// If animating, we loop until all events are read, then continue
-	// to draw the next frame of animation.
-	while((ident=ALooper_pollAll(mode, NULL, &events, (void**)&source)) >= 0)
-	{
-		// LOGI("poll mode %d\n",mode);
-	
-		// Process this event.
-		if(source != NULL) 
-		{
-			source->process(engine.app, source);
-		}
-		
-		if(mode)
-		{
-			break;
-		}
-		
-		// If a sensor has data, process it now.
-		if (ident == LOOPER_ID_USER) 
-		{
-			if (engine.accelerometerSensor != NULL) 
-			{
-				Media_SensorEvent sensor_event;
-				ASensorEvent event;
-				while(ASensorEventQueue_getEvents(engine.sensorEventQueue,&event,1) > 0) 
-				{
-					sensor_event.type = MEDIA_SENSOR;
-					sensor_event.sensor = MEDIA_SENSOR_ACCELEROMETER;
-					sensor_event.x = event.acceleration.x;
-					sensor_event.y = event.acceleration.y;
-					sensor_event.z = event.acceleration.z;
-					pushSensorEvent(&sensor_event);
-				}
-			}
-		}
-		
-		// Check if we are exiting.
-		if(engine.app->destroyRequested != 0) 
-		{
-			break;
-		}
-	}
-}
-
-void Media_handleEvents()
-{
-	engine_handle_events(0);
-}
-
-void Media_waitForEvent()
-{
-	engine_handle_events(-1);
-}
-
-int initDisplay()
+int __initDisplay(struct engine *engine)
 {
 	// initialize OpenGL ES and EGL
 
@@ -338,9 +107,9 @@ int initDisplay()
 	 * ANativeWindow buffers to match, using EGL_NATIVE_VISUAL_ID. */
 	eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &format);
 
-	ANativeWindow_setBuffersGeometry(engine.app->window, 0, 0, format);
+	ANativeWindow_setBuffersGeometry(engine->app->window, 0, 0, format);
 
-	surface = eglCreateWindowSurface(display, config, engine.app->window, NULL);
+	surface = eglCreateWindowSurface(display, config, engine->app->window, NULL);
 	
 	EGLint attrib_list[] = 
 	{
@@ -361,11 +130,11 @@ int initDisplay()
 	eglQuerySurface(display, surface, EGL_WIDTH, &w);
 	eglQuerySurface(display, surface, EGL_HEIGHT, &h);
 
-	engine.display = display;
-	engine.context = context;
-	engine.surface = surface;
-	engine.width = w;
-	engine.height = h;
+	engine->display = display;
+	engine->context = context;
+	engine->surface = surface;
+	engine->width = w;
+	engine->height = h;
 
 	// Initialize GL state.
 	glEnable(GL_CULL_FACE);
@@ -373,56 +142,262 @@ int initDisplay()
 	return 0;
 }
 
-void termDisplay()
+void __termDisplay(struct engine *engine)
 {
-	if (engine.display != EGL_NO_DISPLAY) {
-		eglMakeCurrent(engine.display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-		if (engine.context != EGL_NO_CONTEXT) {
-			eglDestroyContext(engine.display, engine.context);
+	if (engine->display != EGL_NO_DISPLAY) {
+		eglMakeCurrent(engine->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+		if (engine->context != EGL_NO_CONTEXT) {
+			eglDestroyContext(engine->display, engine->context);
 		}
-		if (engine.surface != EGL_NO_SURFACE) {
-			eglDestroySurface(engine.display, engine.surface);
+		if (engine->surface != EGL_NO_SURFACE) {
+			eglDestroySurface(engine->display, engine->surface);
 		}
-		eglTerminate(engine.display);
+		eglTerminate(engine->display);
 	}
 
-	engine.display = EGL_NO_DISPLAY;
-	engine.context = EGL_NO_CONTEXT;
-	engine.surface = EGL_NO_SURFACE;
+	engine->display = EGL_NO_DISPLAY;
+	engine->context = EGL_NO_CONTEXT;
+	engine->surface = EGL_NO_SURFACE;
 }
 
-void Media_setRenderer(void (*renderer)(void*), void *data)
+/**
+ * Process the next input event.
+ */
+static int32_t engine_handle_input(struct android_app* android_app, AInputEvent* event)
 {
-	engine.renderer = renderer;
-	engine.renderer_data = data;
+	Media_App *app = (Media_App*)(android_app->userData);
+	Media_MotionEvent motion_event;
+	int32_t action;
+	switch(AInputEvent_getType(event))
+	{
+	case AINPUT_EVENT_TYPE_MOTION:
+		switch(AInputEvent_getSource(event))
+		{
+		case AINPUT_SOURCE_TOUCHSCREEN:
+			action = AKeyEvent_getAction(event);
+			motion_event.index = action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK;
+			switch(action & AMOTION_EVENT_ACTION_MASK)
+			{
+			case AMOTION_EVENT_ACTION_DOWN:
+				motion_event.action = MEDIA_ACTION_DOWN;
+				break;
+			case AMOTION_EVENT_ACTION_UP:
+				motion_event.action = MEDIA_ACTION_UP;
+				break;
+			case AMOTION_EVENT_ACTION_MOVE:
+				motion_event.action = MEDIA_ACTION_MOVE;
+				break;
+			}
+			break;
+		}
+		motion_event.x = AMotionEvent_getX(event, 0);
+		motion_event.y = AMotionEvent_getY(event, 0);
+		pushMotionEvent(app,&motion_event);
+		return 1;
+	/*
+	case AINPUT_EVENT_TYPE_KEY:
+		// handle key input...
+		return 1;
+	*/
+  }
+  
+	return 0;
 }
 
-void Media_renderFrame()
+/**
+ * Process the next main command.
+ */
+static void engine_handle_cmd(struct android_app* android_app, int32_t cmd) 
 {
-	if (engine.display == NULL) {
+	Media_App *app = (Media_App*)(android_app->userData);
+	struct engine *engine = (struct engine*)(app->platform_context);
+	Media_AppEvent app_event;
+	Media_SurfaceEvent surface_event;
+#ifdef DEBUG
+	printInfo("Command %d\n",cmd);
+#endif
+	switch(cmd) 
+	{
+	case APP_CMD_SAVE_STATE:
+		app_event.type = MEDIA_APP_SAVESTATE;
+		pushAppEvent(app,&app_event);
+		break;
+	case APP_CMD_INIT_WINDOW:
+		__initDisplay(engine);
+		surface_event.w = engine->width;
+		surface_event.h = engine->height;
+		surface_event.type = MEDIA_SURFACE_INIT;
+		pushSurfaceEvent(app,&surface_event);
+		surface_event.type = MEDIA_SURFACE_RESIZE;
+		pushSurfaceEvent(app,&surface_event);
+		break;
+	case APP_CMD_TERM_WINDOW:
+		__termDisplay(engine);
+		surface_event.type = MEDIA_SURFACE_TERM;
+		pushSurfaceEvent(app,&surface_event);
+		break;
+	case APP_CMD_CONFIG_CHANGED:
+		engine->frame_counter = 4;
+	case APP_CMD_GAINED_FOCUS:
+		app_event.type = MEDIA_APP_SHOW;
+		pushAppEvent(app,&app_event);
+		break;
+	case APP_CMD_LOST_FOCUS:
+		app_event.type = MEDIA_APP_HIDE;
+		pushAppEvent(app,&app_event);
+		break;
+	case APP_CMD_DESTROY:
+		app_event.type = MEDIA_APP_QUIT;
+		pushAppEvent(app,&app_event);
+		break;
+	default:
+		break;
+	}
+}
+
+static void engine_handle_events(Media_App *app, int mode)
+{
+	struct engine *engine = (struct engine*)(app->platform_context);
+	if(engine->frame_counter > 0)
+	{
+		engine->frame_counter--;
+		if(engine->frame_counter == 0)
+		{
+			Media_SurfaceEvent event;
+			event.type = MEDIA_SURFACE_RESIZE;
+			eglQuerySurface(engine->display, engine->surface, EGL_WIDTH, &(event.w));
+			eglQuerySurface(engine->display, engine->surface, EGL_HEIGHT, &(event.h));
+			pushSurfaceEvent(app,&event);
+		}
+	}
+	
+	// Read all pending events.
+	int ident;
+	int events;
+	struct android_poll_source* source;
+
+	// If not animating, we will block forever waiting for events.
+	// If animating, we loop until all events are read, then continue
+	// to draw the next frame of animation.
+	while((ident=ALooper_pollAll(mode, NULL, &events, (void**)&source)) >= 0)
+	{
+		// LOGI("poll mode %d\n",mode);
+	
+		// Process this event.
+		if(source != NULL) 
+		{
+			source->process(engine->app, source);
+		}
+		
+		if(mode)
+		{
+			break;
+		}
+		
+		// If a sensor has data, process it now.
+		if (ident == LOOPER_ID_USER) 
+		{
+			if (engine->accelerometerSensor != NULL) 
+			{
+				Media_SensorEvent sensor_event;
+				ASensorEvent event;
+				while(ASensorEventQueue_getEvents(engine->sensorEventQueue,&event,1) > 0) 
+				{
+					sensor_event.sensor = MEDIA_SENSOR_ACCELEROMETER;
+					sensor_event.x = event.acceleration.x;
+					sensor_event.y = event.acceleration.y;
+					sensor_event.z = event.acceleration.z;
+					pushSensorEvent(app,&sensor_event);
+				}
+			}
+		}
+		
+		// Check if we are exiting.
+		if(engine->app->destroyRequested != 0) 
+		{
+			break;
+		}
+	}
+}
+
+void Media_handleEvents(Media_App *app)
+{
+	engine_handle_events(app,0);
+}
+
+void Media_waitForEvent(Media_App *app)
+{
+	engine_handle_events(app,-1);
+}
+
+void Media_renderFrame(Media_App *app)
+{
+	struct engine *engine = (struct engine*)(app->platform_context);
+	if(engine->display == NULL) 
+	{
 		// No display.
 		return;
 	}
-	if(engine.renderer != NULL)
+	if(app->renderer != NULL)
 	{
-		engine.renderer(engine.renderer_data);
+		app->renderer(app);
 	}
-	eglSwapBuffers(engine.display, engine.surface);
+	eglSwapBuffers(engine->display, engine->surface);
 }
 
-int Media_enableSensor(Media_SensorType type, unsigned long rate)
+int Media_enableSensor(Media_App *app, Media_SensorType type, unsigned long rate)
 {
-	if(type == MEDIA_SENSOR_ACCELEROMETER && engine.accelerometerSensor != NULL) {
-		ASensorEventQueue_enableSensor(engine.sensorEventQueue,engine.accelerometerSensor);
-		ASensorEventQueue_setEventRate(engine.sensorEventQueue,engine.accelerometerSensor,rate);
+	struct engine *engine = (struct engine*)(app->platform_context);
+	if(type == MEDIA_SENSOR_ACCELEROMETER && engine->accelerometerSensor != NULL) 
+	{
+		ASensorEventQueue_enableSensor(engine->sensorEventQueue,engine->accelerometerSensor);
+		ASensorEventQueue_setEventRate(engine->sensorEventQueue,engine->accelerometerSensor,rate);
 	}
 }
 
-int Media_disableSensor(Media_SensorType type)
+int Media_disableSensor(Media_App *app, Media_SensorType type)
 {
-	if(type == MEDIA_SENSOR_ACCELEROMETER && engine.accelerometerSensor != NULL) {
-		ASensorEventQueue_disableSensor(engine.sensorEventQueue,engine.accelerometerSensor);
+	struct engine *engine = (struct engine*)(app->platform_context);
+	if(type == MEDIA_SENSOR_ACCELEROMETER && engine->accelerometerSensor != NULL) 
+	{
+		ASensorEventQueue_disableSensor(engine->sensorEventQueue,engine->accelerometerSensor);
 	}
 }
 
-// #endif
+/**
+ * This is the main entry point of a native application that is using
+ * android_native_app_glue.  It runs in its own thread, with its own
+ * event loop for receiving input events and doing other things.
+ */
+void android_main(struct android_app* state) 
+{
+	Media_App app;
+	struct engine engine;
+	
+	// Make sure glue isn't stripped.
+	app_dummy();
+	
+	app.data = NULL;
+	app.renderer = NULL;
+	app.listeners.app = NULL;
+	app.listeners.surface = NULL;
+	app.listeners.motion = NULL;
+	app.listeners.sensor = NULL;
+	
+	memset(&engine,0,sizeof(struct engine));
+	state->userData = &app;
+	state->onAppCmd = engine_handle_cmd;
+	state->onInputEvent = engine_handle_input;
+	engine.app = state;
+	
+	app.platform_context = (void*)&engine;
+	
+	// Prepare to monitor accelerometer
+  engine.sensorManager = ASensorManager_getInstance();
+  engine.accelerometerSensor = ASensorManager_getDefaultSensor(engine.sensorManager,ASENSOR_TYPE_ACCELEROMETER);
+  engine.sensorEventQueue = ASensorManager_createEventQueue(engine.sensorManager,state->looper, LOOPER_ID_USER, NULL, NULL);
+	
+	Media_main(&app);
+}
+
+#endif

@@ -1,5 +1,7 @@
 #ifndef __ANDROID__
 
+#define DEBUG
+
 #include "media.h"
 
 #include <stdlib.h>
@@ -9,7 +11,7 @@
 #include <GL/glew.h>
 #include <GL/glu.h>
 
-struct __Context
+typedef struct PlatformContext
 {
 	SDL_Window *window;
 	SDL_GLContext context;
@@ -19,51 +21,57 @@ struct __Context
 	
 	int mouse[3];
 	
-	void(*app_func)    (const Media_AppEvent*,    void*);
-	void(*surface_func)(const Media_SurfaceEvent*,void*);
-	void(*motion_func) (const Media_MotionEvent*, void*);
-	void(*sensor_func) (const Media_SensorEvent*, void*);
-	void *listeners_data;
-	
 	int init_event_pushed;
-	void(*renderer)(void*);
-	void *renderer_data;
-};
-static struct __Context __context;
+}
+PlatformContext;
 
-static void pushAppEvent(const Media_AppEvent *event) 
+static void pushAppEvent(Media_App *app, const Media_AppEvent *event) 
 {
-	if(__context.app_func) { __context.app_func(event,__context.listeners_data); }
+	if(app->listeners.app) { app->listeners.app(app,event); }
 }
-static void pushSurfaceEvent(const Media_SurfaceEvent *event) 
+static void pushSurfaceEvent(Media_App *app, const Media_SurfaceEvent *event) 
 {
-	if(__context.surface_func) { __context.surface_func(event,__context.listeners_data); }
+	if(app->listeners.surface) { app->listeners.surface(app,event); }
 }
-static void pushMotionEvent(const Media_MotionEvent *event) 
+static void pushMotionEvent(Media_App *app, const Media_MotionEvent *event) 
 {
-	if(__context.motion_func) { __context.motion_func(event,__context.listeners_data); }
+	if(app->listeners.motion) { app->listeners.motion(app,event); }
 }
-static void pushSensorEvent(const Media_SensorEvent *event) 
+static void pushSensorEvent(Media_App *app, const Media_SensorEvent *event) 
 {
-	if(__context.sensor_func) { __context.sensor_func(event,__context.listeners_data); }
+	if(app->listeners.sensor) { app->listeners.sensor(app,event); }
 }
 
-int Media_init()
+int __initDisplay(PlatformContext *context)
 {
-	__context.width = 800;
-	__context.height = 600;
+	context->width = 800;
+	context->height = 600;
 
-	__context.window =
-		SDL_CreateWindow(
-			"MyNativeApp",
+	context->window = SDL_CreateWindow(
+			"MediaApp",
 			SDL_WINDOWPOS_CENTERED,
 			SDL_WINDOWPOS_CENTERED,
-			__context.width, __context.height,
+			context->width, context->height,
 			SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
 		);
 	
-	__context.context =
-		SDL_GL_CreateContext(__context.window);
+	if(context->window == NULL)
+	{
+#ifdef DEBUG
+		printf("Could not create SDL_Window\n");
+#endif
+		return -1;
+	}
+	
+	context->context = SDL_GL_CreateContext(context->window);
+	
+	if(context->context == NULL)
+	{
+#ifdef DEBUG
+		printf("Could not create SDL_GL_Context\n");
+#endif
+		return -2;
+	}
 
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
 	SDL_GL_SetAttribute(SDL_GL_RED_SIZE,5);
@@ -74,66 +82,72 @@ int Media_init()
 	GLenum glew_status = glewInit();
 	if(GLEW_OK != glew_status)
 	{
-		printf("%s\n",glewGetErrorString(glew_status));
-		return -1;
+#ifdef DEBUG
+		printf("Could not init glew: %s\n",glewGetErrorString(glew_status));
+#endif
+		return -3;
 	}
 	if(!GLEW_VERSION_2_0)
 	{
-		printf("%s\n","No support for OpenGL 2.0 found");
-		return -2;
+#ifdef DEBUG
+		printf("No support for OpenGL 2.0 found\n");
+#endif
+		return -4;
 	}
 	
 	return 0;
 }
 
-void Media_quit()
+void __termDisplay(PlatformContext *context)
 {
-	SDL_GL_DeleteContext(__context.context);
-	SDL_DestroyWindow(__context.window);
+	SDL_GL_DeleteContext(context->context);
+	SDL_DestroyWindow(context->window);
 }
 
-static void handleEvent(const SDL_Event *event)
+static void __handleEvent(Media_App *app, PlatformContext *context, const SDL_Event *event)
 {
 	Media_AppEvent app_event;
 	Media_SurfaceEvent surface_event;
 	Media_MotionEvent motion_event;
-	if(!__context.init_event_pushed)
+	if(!context->init_event_pushed)
 	{
+		surface_event.w = context->width;
+		surface_event.h = context->height;
 		surface_event.type = MEDIA_SURFACE_INIT;
-		pushSurfaceEvent(&surface_event);
+		pushSurfaceEvent(app,&surface_event);
 		surface_event.type = MEDIA_SURFACE_RESIZE;
-		surface_event.width = __context.width;
-		surface_event.height = __context.height;
-		pushSurfaceEvent(&surface_event);
-		__context.init_event_pushed = 1;
+		pushSurfaceEvent(app,&surface_event);
+		context->init_event_pushed = 1;
 	}
 	
 	switch(event->type)
 	{
 	case SDL_QUIT:
 		surface_event.type = MEDIA_SURFACE_TERM;
-		pushSurfaceEvent(&surface_event);
+		pushSurfaceEvent(app,&surface_event);
 		app_event.type = MEDIA_APP_QUIT;
-		pushAppEvent(&app_event);
+		pushAppEvent(app,&app_event);
 		break;
 	case SDL_WINDOWEVENT:
 		switch(event->window.event) 
 		{
 		case SDL_WINDOWEVENT_RESIZED:
-			__context.width = event->window.data1;
-			__context.height = event->window.data2;
+			context->width = event->window.data1;
+			context->height = event->window.data2;
 			surface_event.type = MEDIA_SURFACE_RESIZE;
-			surface_event.width = __context.width;
-			surface_event.height = __context.height;
-			pushSurfaceEvent(&surface_event);
+			surface_event.w = context->width;
+			surface_event.h = context->height;
+			pushSurfaceEvent(app,&surface_event);
 			break;
 		/*
 		// Not used due to bad behavior
 		case SDL_WINDOWEVENT_MAXIMIZED:
 			app_event.type = MEDIA_APP_SHOW;
+			pushAppEvent(app,&app_event);
 			break;
 		case SDL_WINDOWEVENT_MINIMIZED:
 			app_event.type = MEDIA_APP_HIDE;
+			pushAppEvent(app,&app_event);
 			break;
 		
 		*/
@@ -142,35 +156,32 @@ static void handleEvent(const SDL_Event *event)
 		}
 		break;
 	case SDL_MOUSEMOTION:
-		if(__context.mouse[0])
+		if(context->mouse[0])
 		{
-			motion_event.type = MEDIA_MOTION;
 			motion_event.action = MEDIA_ACTION_MOVE;
 			motion_event.x = event->motion.x;
 		  motion_event.y = event->motion.y;
-			pushMotionEvent(&motion_event);
+			pushMotionEvent(app,&motion_event);
 		}
 		break;
 	case SDL_MOUSEBUTTONDOWN:
 		if(event->button.button == SDL_BUTTON_LEFT)
 		{
-			__context.mouse[0] = 1;
-			motion_event.type = MEDIA_MOTION;
+			context->mouse[0] = 1;
 			motion_event.action = MEDIA_ACTION_DOWN;
 			motion_event.x = event->button.x;
 		  motion_event.y = event->button.y;
-			pushMotionEvent(&motion_event);
+			pushMotionEvent(app,&motion_event);
 		}
 		break;
 	case SDL_MOUSEBUTTONUP:
 		if(event->button.button == SDL_BUTTON_LEFT)
 		{
-			__context.mouse[0] = 0;
-			motion_event.type = MEDIA_MOTION;
+			context->mouse[0] = 0;
 			motion_event.action = MEDIA_ACTION_UP;
 			motion_event.x = event->button.x;
 		  motion_event.y = event->button.y;
-			pushMotionEvent(&motion_event);
+			pushMotionEvent(app,&motion_event);
 		}
 		break;
 	default:
@@ -178,62 +189,67 @@ static void handleEvent(const SDL_Event *event)
 	}
 }
 
-void Media_handleEvents()
+void Media_handleEvents(Media_App *app)
 {
 	SDL_Event event;
 	while(SDL_PollEvent(&event))
 	{
-		handleEvent(&event);
+		__handleEvent(app,(PlatformContext*)(app->platform_context),&event);
 	}
 }
 
-void Media_waitForEvent()
+void Media_waitForEvent(Media_App *app)
 {
 	SDL_Event event;
 	if(SDL_WaitEvent(&event))
 	{
-		handleEvent(&event);
+		__handleEvent(app,(PlatformContext*)(app->platform_context),&event);
 	}
 }
 
-void Media_setEventListeners(
-    void (*app_func)    (const Media_AppEvent*,    void*), 
-    void (*surface_func)(const Media_SurfaceEvent*,void*), 
-    void (*motion_func) (const Media_MotionEvent*, void*), 
-    void (*sensor_func) (const Media_SensorEvent*, void*), 
-    void *data
-)
+void Media_renderFrame(Media_App *app)
 {
-	__context.app_func = app_func;
-	__context.surface_func = surface_func;
-	__context.motion_func = motion_func;
-	__context.sensor_func = sensor_func;
-	__context.listeners_data = data;
-}
-
-void Media_setRenderer(void (*renderer)(void*), void *data)
-{
-	__context.renderer = renderer;
-	__context.renderer_data = data;
-}
-
-void Media_renderFrame()
-{
-	if(__context.renderer != NULL)
+	if(app->renderer != NULL)
 	{
-		__context.renderer(__context.renderer_data);
+		app->renderer(app);
 	}
-	SDL_GL_SwapWindow(__context.window);
+	SDL_GL_SwapWindow(((PlatformContext*)(app->platform_context))->window);
 }
 
-int Media_enableSensor(Media_SensorType type, unsigned long rate)
+int Media_enableSensor(Media_App *app, Media_SensorType type, unsigned long rate)
 {
 	return -1;
 }
 
-int Media_disableSensor(Media_SensorType type)
+int Media_disableSensor(Media_App *app, Media_SensorType type)
 {
 	return -1;
+}
+
+int main(int argc, char *argv[])
+{
+	Media_App app;
+	PlatformContext context;
+	
+	app.data = NULL;
+	app.renderer = NULL;
+	app.listeners.app = NULL;
+	app.listeners.surface = NULL;
+	app.listeners.motion = NULL;
+	app.listeners.sensor = NULL;
+	
+	context.init_event_pushed = 0;
+	
+	int returned_value;
+	
+	__initDisplay(&context);
+	
+	app.platform_context = (void*)&context;
+	returned_value = Media_main(&app);
+	
+	__termDisplay(&context);
+	
+	return returned_value;
 }
 
 #endif
