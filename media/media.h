@@ -12,6 +12,7 @@
 
 typedef unsigned int Media_EventType;
 typedef unsigned int Media_ActionType;
+typedef unsigned int Media_ButtonType;
 typedef unsigned int Media_SensorType;
 
 /* Event types */
@@ -31,6 +32,12 @@ typedef unsigned int Media_SensorType;
 #define MEDIA_ACTION_DOWN          0x03
 #define MEDIA_ACTION_POINTER_UP    0x04
 #define MEDIA_ACTION_POINTER_DOWN  0x05
+#define MEDIA_ACTION_WHEEL_UP      0x11
+#define MEDIA_ACTION_WHEEL_DOWN    0x12
+/* Motion buttons */
+#define MEDIA_BUTTON_LEFT          0x01
+#define MEDIA_BUTTON_MIDDLE        0x02
+#define MEDIA_BUTTON_RIGHT         0x04
 
 /* Sensors */
 #define MEDIA_SENSOR_ACCELEROMETER   0x01
@@ -51,6 +58,7 @@ Media_SurfaceEvent;
 typedef struct Media_MotionEvent
 {
 	Media_ActionType action;
+	Media_ButtonType button;
 	int index;
 	int x,y;
 } 

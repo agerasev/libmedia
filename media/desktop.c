@@ -25,6 +25,27 @@ typedef struct PlatformContext
 }
 PlatformContext;
 
+static int getButtonNum(int button)
+{
+	if(button == SDL_BUTTON_LEFT)
+	{
+		return 0;
+	}
+	else
+	if(button == SDL_BUTTON_MIDDLE)
+	{
+		return 1;
+	}
+	else
+	if(button == SDL_BUTTON_RIGHT)
+	{
+		return 2;
+	}
+	return -1;
+}
+
+static const Media_ButtonType BUTTON[3] = { MEDIA_BUTTON_LEFT, MEDIA_BUTTON_MIDDLE, MEDIA_BUTTON_RIGHT };
+
 static void pushAppEvent(Media_App *app, const Media_AppEvent *event) 
 {
 	if(app->listeners.app) { app->listeners.app(app,event); }
@@ -37,10 +58,12 @@ static void pushMotionEvent(Media_App *app, const Media_MotionEvent *event)
 {
 	if(app->listeners.motion) { app->listeners.motion(app,event); }
 }
+/*
 static void pushSensorEvent(Media_App *app, const Media_SensorEvent *event) 
 {
 	if(app->listeners.sensor) { app->listeners.sensor(app,event); }
 }
+*/
 
 int __initDisplay(PlatformContext *context)
 {
@@ -156,31 +179,47 @@ static void __handleEvent(Media_App *app, PlatformContext *context, const SDL_Ev
 		}
 		break;
 	case SDL_MOUSEMOTION:
-		if(context->mouse[0])
-		{
-			motion_event.action = MEDIA_ACTION_MOVE;
-			motion_event.x = event->motion.x;
-		  motion_event.y = event->motion.y;
-			pushMotionEvent(app,&motion_event);
-		}
+		motion_event.action = MEDIA_ACTION_MOVE;
+		motion_event.button = 
+		  MEDIA_BUTTON_LEFT*context->mouse[0] |
+		  MEDIA_BUTTON_MIDDLE*context->mouse[1] |
+		  MEDIA_BUTTON_RIGHT*context->mouse[2];
+		motion_event.x = event->motion.x;
+		motion_event.y = event->motion.y;
+		pushMotionEvent(app,&motion_event);
 		break;
 	case SDL_MOUSEBUTTONDOWN:
-		if(event->button.button == SDL_BUTTON_LEFT)
-		{
-			context->mouse[0] = 1;
-			motion_event.action = MEDIA_ACTION_DOWN;
-			motion_event.x = event->button.x;
-		  motion_event.y = event->button.y;
-			pushMotionEvent(app,&motion_event);
-		}
+		context->mouse[getButtonNum(event->button.button)] = 1;
+		motion_event.action = MEDIA_ACTION_DOWN;
+		motion_event.button = BUTTON[getButtonNum(event->button.button)];
+		motion_event.x = event->button.x;
+		motion_event.y = event->button.y;
+		pushMotionEvent(app,&motion_event);
 		break;
 	case SDL_MOUSEBUTTONUP:
-		if(event->button.button == SDL_BUTTON_LEFT)
+		context->mouse[getButtonNum(event->button.button)] = 0;
+		motion_event.action = MEDIA_ACTION_UP;
+		motion_event.button = BUTTON[getButtonNum(event->button.button)];
+		motion_event.x = event->button.x;
+	  motion_event.y = event->button.y;
+		pushMotionEvent(app,&motion_event);
+		break;
+	case SDL_MOUSEWHEEL:
+		motion_event.action = 0;
+		motion_event.button = 0;
+		motion_event.x = event->button.x;
+	  motion_event.y = event->button.y;
+		if(event->wheel.y > 0)
 		{
-			context->mouse[0] = 0;
-			motion_event.action = MEDIA_ACTION_UP;
-			motion_event.x = event->button.x;
-		  motion_event.y = event->button.y;
+			motion_event.action = MEDIA_ACTION_WHEEL_UP;
+		}
+		else
+		if(event->wheel.y < 0)
+		{
+			motion_event.action = MEDIA_ACTION_WHEEL_DOWN;
+		}
+		if(motion_event.action)
+		{
 			pushMotionEvent(app,&motion_event);
 		}
 		break;
@@ -237,6 +276,10 @@ int main(int argc, char *argv[])
 	app.listeners.surface = NULL;
 	app.listeners.motion = NULL;
 	app.listeners.sensor = NULL;
+	
+	context.mouse[0] = 0;
+	context.mouse[1] = 0;
+	context.mouse[2] = 0;
 	
 	context.init_event_pushed = 0;
 	
