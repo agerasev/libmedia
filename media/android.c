@@ -32,8 +32,14 @@
 #define LOGI(...) (printInfo(__VA_ARGS__))
 #define LOGW(...) (printWarn(__VA_ARGS__))
 
-static int  initDisplay();
-static void termDisplay();
+#define POINTER_MAX 0x10
+
+struct pointer
+{
+	int pointer_count;
+	int pointer_state[POINTER_MAX];
+	int pointer[2*POINTER_MAX];
+};
 
 struct engine 
 {
@@ -44,7 +50,9 @@ struct engine
 	EGLContext context;
 	int32_t width;
 	int32_t height;
+	
 	int frame_counter;
+	struct pointer pointer;
   
 	ASensorManager* sensorManager;
 	const ASensor* accelerometerSensor;
@@ -68,7 +76,7 @@ static void pushSensorEvent(Media_App *app, const Media_SensorEvent *event)
 	if(app->listeners.sensor) { app->listeners.sensor(app,event); }
 }
 
-int __initDisplay(struct engine *engine)
+static int __initDisplay(struct engine *engine)
 {
 	// initialize OpenGL ES and EGL
 
@@ -86,7 +94,7 @@ int __initDisplay(struct engine *engine)
 		EGL_RED_SIZE, 8,
 		EGL_NONE
 	};
-	EGLint w, h, dummy, format;
+	EGLint w, h, format;
 	EGLint numConfigs;
 	EGLConfig config;
 	EGLSurface surface;
@@ -142,7 +150,7 @@ int __initDisplay(struct engine *engine)
 	return 0;
 }
 
-void __termDisplay(struct engine *engine)
+static void __termDisplay(struct engine *engine)
 {
 	if (engine->display != EGL_NO_DISPLAY) {
 		eglMakeCurrent(engine->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
@@ -165,9 +173,13 @@ void __termDisplay(struct engine *engine)
  */
 static int32_t engine_handle_input(struct android_app* android_app, AInputEvent* event)
 {
+	int i;
 	Media_App *app = (Media_App*)(android_app->userData);
+	struct engine *engine = (struct engine*)(app->platform_context);
 	Media_MotionEvent motion_event;
 	int32_t action;
+	int index;
+	
 	switch(AInputEvent_getType(event))
 	{
 	case AINPUT_EVENT_TYPE_MOTION:
@@ -175,14 +187,34 @@ static int32_t engine_handle_input(struct android_app* android_app, AInputEvent*
 		{
 		case AINPUT_SOURCE_TOUCHSCREEN:
 			action = AKeyEvent_getAction(event);
-			motion_event.index = action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK;
+			motion_event.index = (action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
+			index = motion_event.index;
+			if(index >= POINTER_MAX)
+			{
+				index = POINTER_MAX - 1;
+			}
+			motion_event.button = MEDIA_BUTTON_LEFT;
 			switch(action & AMOTION_EVENT_ACTION_MASK)
 			{
 			case AMOTION_EVENT_ACTION_DOWN:
 				motion_event.action = MEDIA_ACTION_DOWN;
+				engine->pointer.pointer_state[0] = 1;
+				engine->pointer.pointer_count = AMotionEvent_getPointerCount(event);
 				break;
 			case AMOTION_EVENT_ACTION_UP:
 				motion_event.action = MEDIA_ACTION_UP;
+				engine->pointer.pointer_state[0] = 0;
+				engine->pointer.pointer_count = AMotionEvent_getPointerCount(event);
+				break;
+			case AMOTION_EVENT_ACTION_POINTER_DOWN:
+				motion_event.action = MEDIA_ACTION_DOWN;
+				engine->pointer.pointer_state[index] = 1;
+				engine->pointer.pointer_count = AMotionEvent_getPointerCount(event);
+				break;
+			case AMOTION_EVENT_ACTION_POINTER_UP:
+				motion_event.action = MEDIA_ACTION_UP;
+				engine->pointer.pointer_state[index] = 0;
+				engine->pointer.pointer_count = AMotionEvent_getPointerCount(event);
 				break;
 			case AMOTION_EVENT_ACTION_MOVE:
 				motion_event.action = MEDIA_ACTION_MOVE;
@@ -190,8 +222,16 @@ static int32_t engine_handle_input(struct android_app* android_app, AInputEvent*
 			}
 			break;
 		}
-		motion_event.x = AMotionEvent_getX(event, 0);
-		motion_event.y = AMotionEvent_getY(event, 0);
+		for(i = 0; i < POINTER_MAX; ++i)
+		{
+			if(engine->pointer.pointer_state[i])
+			{
+				engine->pointer.pointer[2*i] = AMotionEvent_getX(event,i) - engine->width/2;
+				engine->pointer.pointer[2*i + 1] = engine->height/2 - AMotionEvent_getY(event,i);
+			}
+		}
+		motion_event.x = AMotionEvent_getX(event, motion_event.index) - engine->width/2;
+		motion_event.y = engine->height/2 - AMotionEvent_getY(event, motion_event.index);
 		pushMotionEvent(app,&motion_event);
 		return 1;
 	/*
@@ -265,8 +305,10 @@ static void engine_handle_events(Media_App *app, int mode)
 		{
 			Media_SurfaceEvent event;
 			event.type = MEDIA_SURFACE_RESIZE;
-			eglQuerySurface(engine->display, engine->surface, EGL_WIDTH, &(event.w));
-			eglQuerySurface(engine->display, engine->surface, EGL_HEIGHT, &(event.h));
+			eglQuerySurface(engine->display, engine->surface, EGL_WIDTH, &(engine->width));
+			eglQuerySurface(engine->display, engine->surface, EGL_HEIGHT, &(engine->height));
+			event.w = engine->width;
+			event.h = engine->height;
 			pushSurfaceEvent(app,&event);
 		}
 	}
@@ -330,6 +372,29 @@ void Media_waitForEvent(Media_App *app)
 	engine_handle_events(app,-1);
 }
 
+void Media_getPointer(Media_App *app, int *x, int *y)
+{
+	struct engine *engine = (struct engine*)(app->platform_context);
+	*x = engine->pointer.pointer[0];
+	*y = engine->pointer.pointer[1];
+}
+
+void Media_getPointerIndex(Media_App *app, int index, int *x, int *y)
+{
+	struct engine *engine = (struct engine*)(app->platform_context);
+	if(index >= POINTER_MAX)
+	{
+		return;
+	}
+	*x = engine->pointer.pointer[2*index];
+	*y = engine->pointer.pointer[2*index + 1];
+}
+
+int Media_getPointerCount(Media_App *app)
+{
+	return ((struct engine*)(app->platform_context))->pointer.pointer_count;
+}
+
 void Media_renderFrame(Media_App *app)
 {
 	struct engine *engine = (struct engine*)(app->platform_context);
@@ -352,7 +417,9 @@ int Media_enableSensor(Media_App *app, Media_SensorType type, unsigned long rate
 	{
 		ASensorEventQueue_enableSensor(engine->sensorEventQueue,engine->accelerometerSensor);
 		ASensorEventQueue_setEventRate(engine->sensorEventQueue,engine->accelerometerSensor,rate);
+		return 0;
 	}
+	return -1;
 }
 
 int Media_disableSensor(Media_App *app, Media_SensorType type)
@@ -361,7 +428,9 @@ int Media_disableSensor(Media_App *app, Media_SensorType type)
 	if(type == MEDIA_SENSOR_ACCELEROMETER && engine->accelerometerSensor != NULL) 
 	{
 		ASensorEventQueue_disableSensor(engine->sensorEventQueue,engine->accelerometerSensor);
+		return 0;
 	}
+	return -1;
 }
 
 /**
