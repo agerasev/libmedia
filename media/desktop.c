@@ -1,7 +1,5 @@
 #ifndef __ANDROID__
 
-#define DEBUG
-
 #include "media.h"
 #include "common.h"
 
@@ -166,31 +164,31 @@ static void __handleEvent(Media_App *app, PlatformContext *context, const SDL_Ev
 		  MEDIA_BUTTON_LEFT*context->mouse[0] |
 		  MEDIA_BUTTON_MIDDLE*context->mouse[1] |
 		  MEDIA_BUTTON_RIGHT*context->mouse[2];
-		motion_event.x = event->motion.x;
-		motion_event.y = event->motion.y;
+		motion_event.x = event->motion.x - context->width/2;
+		motion_event.y = context->height/2 - event->motion.y;
 		_Media_pushMotionEvent(app,&motion_event);
 		break;
 	case SDL_MOUSEBUTTONDOWN:
 		context->mouse[getButtonNum(event->button.button)] = 1;
 		motion_event.action = MEDIA_ACTION_DOWN;
 		motion_event.button = BUTTON[getButtonNum(event->button.button)];
-		motion_event.x = event->button.x;
-		motion_event.y = event->button.y;
+		motion_event.x = event->motion.x - context->width/2;
+		motion_event.y = context->height/2 - event->motion.y;
 		_Media_pushMotionEvent(app,&motion_event);
 		break;
 	case SDL_MOUSEBUTTONUP:
 		context->mouse[getButtonNum(event->button.button)] = 0;
 		motion_event.action = MEDIA_ACTION_UP;
 		motion_event.button = BUTTON[getButtonNum(event->button.button)];
-		motion_event.x = event->button.x;
-	  motion_event.y = event->button.y;
+		motion_event.x = event->motion.x - context->width/2;
+		motion_event.y = context->height/2 - event->motion.y;
 		_Media_pushMotionEvent(app,&motion_event);
 		break;
 	case SDL_MOUSEWHEEL:
 		motion_event.action = 0;
 		motion_event.button = 0;
-		motion_event.x = event->button.x;
-	  motion_event.y = event->button.y;
+		motion_event.x = event->motion.x - context->width/2;
+		motion_event.y = context->height/2 - event->motion.y;
 		if(event->wheel.y > 0)
 		{
 			motion_event.action = MEDIA_ACTION_WHEEL_UP;
@@ -226,6 +224,26 @@ void Media_waitForEvent(Media_App *app)
 	{
 		__handleEvent(app,(PlatformContext*)(app->platform_context),&event);
 	}
+}
+
+void Media_getPointer(Media_App *app, int *x, int *y)
+{
+	PlatformContext* pc = (PlatformContext*)app->platform_context;
+	int mx, my;
+	SDL_GetMouseState(&mx,&my);
+	*x = mx - pc->width/2;
+	*y = pc->height/2 - my;
+}
+
+void Media_getPointerIndex(Media_App *app, int index, int *x, int *y)
+{
+	Media_getPointer(app,x,y);
+}
+
+int Media_getPointerCount(Media_App *app)
+{
+	PlatformContext* pc = (PlatformContext*)app->platform_context;
+	return (pc->mouse[0] + pc->mouse[1] + pc->mouse[2]) > 0;
 }
 
 void Media_renderFrame(Media_App *app)

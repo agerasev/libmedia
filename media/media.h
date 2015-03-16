@@ -112,6 +112,10 @@ void Media_setRenderer   (Media_App *app, void(*renderer)(Media_App *app));
 void Media_handleEvents(Media_App *app);
 /* Waits for events and handles first one */
 void Media_waitForEvent(Media_App *app);
+/* Gets positions of pointers (cursor) */
+void Media_getPointer(Media_App *app, int *x, int *y);
+void Media_getPointerIndex(Media_App *app, int index, int *x, int *y);
+int Media_getPointerCount(Media_App *app);
 
 /* Wraps user-defined app->renderer function */
 void Media_renderFrame (Media_App *app);
