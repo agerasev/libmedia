@@ -18,6 +18,7 @@
 #ifdef __ANDROID__
 
 #include "media.h"
+#include "common.h"
 
 #include <jni.h>
 #include <errno.h>
@@ -50,23 +51,6 @@ struct engine
 	const ASensor* accelerometerSensor;
 	ASensorEventQueue* sensorEventQueue;
 };
-
-static void pushAppEvent(Media_App *app, const Media_AppEvent *event) 
-{
-	if(app->listeners.app) { app->listeners.app(app,event); }
-}
-static void pushSurfaceEvent(Media_App *app, const Media_SurfaceEvent *event) 
-{
-	if(app->listeners.surface) { app->listeners.surface(app,event); }
-}
-static void pushMotionEvent(Media_App *app, const Media_MotionEvent *event) 
-{
-	if(app->listeners.motion) { app->listeners.motion(app,event); }
-}
-static void pushSensorEvent(Media_App *app, const Media_SensorEvent *event) 
-{
-	if(app->listeners.sensor) { app->listeners.sensor(app,event); }
-}
 
 int __initDisplay(struct engine *engine)
 {
@@ -192,7 +176,7 @@ static int32_t engine_handle_input(struct android_app* android_app, AInputEvent*
 		}
 		motion_event.x = AMotionEvent_getX(event, 0);
 		motion_event.y = AMotionEvent_getY(event, 0);
-		pushMotionEvent(app,&motion_event);
+		_Media_pushMotionEvent(app,&motion_event);
 		return 1;
 	/*
 	case AINPUT_EVENT_TYPE_KEY:
@@ -220,35 +204,35 @@ static void engine_handle_cmd(struct android_app* android_app, int32_t cmd)
 	{
 	case APP_CMD_SAVE_STATE:
 		app_event.type = MEDIA_APP_SAVESTATE;
-		pushAppEvent(app,&app_event);
+		_Media_pushAppEvent(app,&app_event);
 		break;
 	case APP_CMD_INIT_WINDOW:
 		__initDisplay(engine);
 		surface_event.w = engine->width;
 		surface_event.h = engine->height;
 		surface_event.type = MEDIA_SURFACE_INIT;
-		pushSurfaceEvent(app,&surface_event);
+		_Media_pushSurfaceEvent(app,&surface_event);
 		surface_event.type = MEDIA_SURFACE_RESIZE;
-		pushSurfaceEvent(app,&surface_event);
+		_Media_pushSurfaceEvent(app,&surface_event);
 		break;
 	case APP_CMD_TERM_WINDOW:
 		__termDisplay(engine);
 		surface_event.type = MEDIA_SURFACE_TERM;
-		pushSurfaceEvent(app,&surface_event);
+		_Media_pushSurfaceEvent(app,&surface_event);
 		break;
 	case APP_CMD_CONFIG_CHANGED:
 		engine->frame_counter = 4;
 	case APP_CMD_GAINED_FOCUS:
 		app_event.type = MEDIA_APP_SHOW;
-		pushAppEvent(app,&app_event);
+		_Media_pushAppEvent(app,&app_event);
 		break;
 	case APP_CMD_LOST_FOCUS:
 		app_event.type = MEDIA_APP_HIDE;
-		pushAppEvent(app,&app_event);
+		_Media_pushAppEvent(app,&app_event);
 		break;
 	case APP_CMD_DESTROY:
 		app_event.type = MEDIA_APP_QUIT;
-		pushAppEvent(app,&app_event);
+		_Media_pushAppEvent(app,&app_event);
 		break;
 	default:
 		break;
@@ -267,7 +251,7 @@ static void engine_handle_events(Media_App *app, int mode)
 			event.type = MEDIA_SURFACE_RESIZE;
 			eglQuerySurface(engine->display, engine->surface, EGL_WIDTH, &(event.w));
 			eglQuerySurface(engine->display, engine->surface, EGL_HEIGHT, &(event.h));
-			pushSurfaceEvent(app,&event);
+			_Media_pushSurfaceEvent(app,&event);
 		}
 	}
 	
@@ -307,7 +291,7 @@ static void engine_handle_events(Media_App *app, int mode)
 					sensor_event.x = event.acceleration.x;
 					sensor_event.y = event.acceleration.y;
 					sensor_event.z = event.acceleration.z;
-					pushSensorEvent(app,&sensor_event);
+					_Media_pushSensorEvent(app,&sensor_event);
 				}
 			}
 		}
@@ -377,12 +361,7 @@ void android_main(struct android_app* state)
 	// Make sure glue isn't stripped.
 	app_dummy();
 	
-	app.data = NULL;
-	app.renderer = NULL;
-	app.listeners.app = NULL;
-	app.listeners.surface = NULL;
-	app.listeners.motion = NULL;
-	app.listeners.sensor = NULL;
+	_Media_initApp(&app);
 	
 	memset(&engine,0,sizeof(struct engine));
 	state->userData = &app;
@@ -398,6 +377,8 @@ void android_main(struct android_app* state)
   engine.sensorEventQueue = ASensorManager_createEventQueue(engine.sensorManager,state->looper, LOOPER_ID_USER, NULL, NULL);
 	
 	Media_main(&app);
+	
+	_Media_freeApp(&app);
 }
 
 #endif

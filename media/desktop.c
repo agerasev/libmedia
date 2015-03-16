@@ -3,6 +3,7 @@
 #define DEBUG
 
 #include "media.h"
+#include "common.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -45,25 +46,6 @@ static int getButtonNum(int button)
 }
 
 static const Media_ButtonType BUTTON[3] = { MEDIA_BUTTON_LEFT, MEDIA_BUTTON_MIDDLE, MEDIA_BUTTON_RIGHT };
-
-static void pushAppEvent(Media_App *app, const Media_AppEvent *event) 
-{
-	if(app->listeners.app) { app->listeners.app(app,event); }
-}
-static void pushSurfaceEvent(Media_App *app, const Media_SurfaceEvent *event) 
-{
-	if(app->listeners.surface) { app->listeners.surface(app,event); }
-}
-static void pushMotionEvent(Media_App *app, const Media_MotionEvent *event) 
-{
-	if(app->listeners.motion) { app->listeners.motion(app,event); }
-}
-/*
-static void pushSensorEvent(Media_App *app, const Media_SensorEvent *event) 
-{
-	if(app->listeners.sensor) { app->listeners.sensor(app,event); }
-}
-*/
 
 int __initDisplay(PlatformContext *context)
 {
@@ -137,9 +119,9 @@ static void __handleEvent(Media_App *app, PlatformContext *context, const SDL_Ev
 		surface_event.w = context->width;
 		surface_event.h = context->height;
 		surface_event.type = MEDIA_SURFACE_INIT;
-		pushSurfaceEvent(app,&surface_event);
+		_Media_pushSurfaceEvent(app,&surface_event);
 		surface_event.type = MEDIA_SURFACE_RESIZE;
-		pushSurfaceEvent(app,&surface_event);
+		_Media_pushSurfaceEvent(app,&surface_event);
 		context->init_event_pushed = 1;
 	}
 	
@@ -147,9 +129,9 @@ static void __handleEvent(Media_App *app, PlatformContext *context, const SDL_Ev
 	{
 	case SDL_QUIT:
 		surface_event.type = MEDIA_SURFACE_TERM;
-		pushSurfaceEvent(app,&surface_event);
+		_Media_pushSurfaceEvent(app,&surface_event);
 		app_event.type = MEDIA_APP_QUIT;
-		pushAppEvent(app,&app_event);
+		_Media_pushAppEvent(app,&app_event);
 		break;
 	case SDL_WINDOWEVENT:
 		switch(event->window.event) 
@@ -160,7 +142,7 @@ static void __handleEvent(Media_App *app, PlatformContext *context, const SDL_Ev
 			surface_event.type = MEDIA_SURFACE_RESIZE;
 			surface_event.w = context->width;
 			surface_event.h = context->height;
-			pushSurfaceEvent(app,&surface_event);
+			_Media_pushSurfaceEvent(app,&surface_event);
 			break;
 		/*
 		// Not used due to bad behavior
@@ -186,7 +168,7 @@ static void __handleEvent(Media_App *app, PlatformContext *context, const SDL_Ev
 		  MEDIA_BUTTON_RIGHT*context->mouse[2];
 		motion_event.x = event->motion.x;
 		motion_event.y = event->motion.y;
-		pushMotionEvent(app,&motion_event);
+		_Media_pushMotionEvent(app,&motion_event);
 		break;
 	case SDL_MOUSEBUTTONDOWN:
 		context->mouse[getButtonNum(event->button.button)] = 1;
@@ -194,7 +176,7 @@ static void __handleEvent(Media_App *app, PlatformContext *context, const SDL_Ev
 		motion_event.button = BUTTON[getButtonNum(event->button.button)];
 		motion_event.x = event->button.x;
 		motion_event.y = event->button.y;
-		pushMotionEvent(app,&motion_event);
+		_Media_pushMotionEvent(app,&motion_event);
 		break;
 	case SDL_MOUSEBUTTONUP:
 		context->mouse[getButtonNum(event->button.button)] = 0;
@@ -202,7 +184,7 @@ static void __handleEvent(Media_App *app, PlatformContext *context, const SDL_Ev
 		motion_event.button = BUTTON[getButtonNum(event->button.button)];
 		motion_event.x = event->button.x;
 	  motion_event.y = event->button.y;
-		pushMotionEvent(app,&motion_event);
+		_Media_pushMotionEvent(app,&motion_event);
 		break;
 	case SDL_MOUSEWHEEL:
 		motion_event.action = 0;
@@ -220,7 +202,7 @@ static void __handleEvent(Media_App *app, PlatformContext *context, const SDL_Ev
 		}
 		if(motion_event.action)
 		{
-			pushMotionEvent(app,&motion_event);
+			_Media_pushMotionEvent(app,&motion_event);
 		}
 		break;
 	default:
@@ -270,12 +252,7 @@ int main(int argc, char *argv[])
 	Media_App app;
 	PlatformContext context;
 	
-	app.data = NULL;
-	app.renderer = NULL;
-	app.listeners.app = NULL;
-	app.listeners.surface = NULL;
-	app.listeners.motion = NULL;
-	app.listeners.sensor = NULL;
+	_Media_initApp(&app);
 	
 	context.mouse[0] = 0;
 	context.mouse[1] = 0;
@@ -291,6 +268,8 @@ int main(int argc, char *argv[])
 	returned_value = Media_main(&app);
 	
 	__termDisplay(&context);
+	
+	_Media_freeApp(&app);
 	
 	return returned_value;
 }

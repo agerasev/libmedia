@@ -74,19 +74,22 @@ Media_SensorEvent;
 struct Media_App;
 typedef struct Media_App Media_App;
 
-typedef struct Media_ListenerSet
+typedef struct Media_Listener
 {
-	void(*app)    (Media_App*, const Media_AppEvent*);
-	void(*surface)(Media_App*, const Media_SurfaceEvent*);
-	void(*motion) (Media_App*, const Media_MotionEvent*);
-	void(*sensor) (Media_App*, const Media_SensorEvent*);
+	void(*app)    (const Media_AppEvent*, void *data);
+	void(*surface)(const Media_SurfaceEvent*, void *data);
+	void(*motion) (const Media_MotionEvent*, void *data);
+	void(*sensor) (const Media_SensorEvent*, void *data);
+	void *data;
 }
-Media_ListenerSet;
+Media_Listener;
 
 struct Media_App
 {
-	Media_ListenerSet listeners;
 	void(*renderer)(Media_App*);
+	
+	Media_Listener **listeners;
+	int listeners_size;
 	
 	/* User data */
 	void *data;
@@ -98,6 +101,12 @@ struct Media_App
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* Adds or removes listeners */
+void Media_addListener   (Media_App *app, Media_Listener *listener);
+void Media_removeListener(Media_App *app, Media_Listener *listener);
+/* Sets current renderer */
+void Media_setRenderer   (Media_App *app, void(*renderer)(Media_App *app));
 
 /* Handles all events in event queue */
 void Media_handleEvents(Media_App *app);
