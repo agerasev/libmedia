@@ -4,6 +4,7 @@
 #include <android/log.h>
 #define printInfo(...) ((void)__android_log_print(ANDROID_LOG_INFO, "libmedia_log", __VA_ARGS__))
 #define printWarn(...) ((void)__android_log_print(ANDROID_LOG_WARN, "libmedia_log", __VA_ARGS__))
+#define __MEDIA_TOUCHSCREEN
 #else // DESKTOP
 #include <stdio.h>
 #define printInfo(...) (fprintf(stdout,__VA_ARGS__))
@@ -30,10 +31,7 @@ typedef unsigned int Media_SensorType;
 #define MEDIA_ACTION_MOVE          0x01
 #define MEDIA_ACTION_UP            0x02
 #define MEDIA_ACTION_DOWN          0x03
-#define MEDIA_ACTION_POINTER_UP    0x04
-#define MEDIA_ACTION_POINTER_DOWN  0x05
-#define MEDIA_ACTION_WHEEL_UP      0x11
-#define MEDIA_ACTION_WHEEL_DOWN    0x12
+#define MEDIA_ACTION_WHEEL         0x11
 /* Motion buttons */
 #define MEDIA_BUTTON_LEFT          0x01
 #define MEDIA_BUTTON_MIDDLE        0x02
@@ -61,6 +59,7 @@ typedef struct Media_MotionEvent
 	Media_ButtonType button;
 	int index;
 	int x,y;
+	int xval,yval;
 } 
 Media_MotionEvent;
 
@@ -114,7 +113,7 @@ void Media_handleEvents(Media_App *app);
 void Media_waitForEvent(Media_App *app);
 /* Gets positions of pointers (cursor) */
 void Media_getPointer(Media_App *app, int *x, int *y);
-void Media_getPointerIndex(Media_App *app, int index, int *x, int *y);
+void Media_getPointerByIndex(Media_App *app, int index, int *x, int *y);
 int Media_getPointerCount(Media_App *app);
 
 /* Wraps user-defined app->renderer function */

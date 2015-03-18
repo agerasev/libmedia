@@ -33,13 +33,13 @@
 #define LOGI(...) (printInfo(__VA_ARGS__))
 #define LOGW(...) (printWarn(__VA_ARGS__))
 
-#define POINTER_MAX 0x10
+#define POINTER_MAX 0x40
 
 struct pointer
 {
 	int pointer_count;
-	int pointer_state[POINTER_MAX];
 	int pointer[2*POINTER_MAX];
+	int pointer_rel[2*POINTER_MAX];
 };
 
 struct engine 
@@ -170,6 +170,7 @@ static int32_t engine_handle_input(struct android_app* android_app, AInputEvent*
 		switch(AInputEvent_getSource(event))
 		{
 		case AINPUT_SOURCE_TOUCHSCREEN:
+			
 			action = AKeyEvent_getAction(event);
 			motion_event.index = (action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
 			index = motion_event.index;
@@ -178,46 +179,57 @@ static int32_t engine_handle_input(struct android_app* android_app, AInputEvent*
 				index = POINTER_MAX - 1;
 			}
 			motion_event.button = MEDIA_BUTTON_LEFT;
+			
 			switch(action & AMOTION_EVENT_ACTION_MASK)
 			{
 			case AMOTION_EVENT_ACTION_DOWN:
 				motion_event.action = MEDIA_ACTION_DOWN;
-				engine->pointer.pointer_state[0] = 1;
-				engine->pointer.pointer_count = AMotionEvent_getPointerCount(event);
 				break;
 			case AMOTION_EVENT_ACTION_UP:
 				motion_event.action = MEDIA_ACTION_UP;
-				engine->pointer.pointer_state[0] = 0;
-				engine->pointer.pointer_count = AMotionEvent_getPointerCount(event);
 				break;
 			case AMOTION_EVENT_ACTION_POINTER_DOWN:
 				motion_event.action = MEDIA_ACTION_DOWN;
-				engine->pointer.pointer_state[index] = 1;
-				engine->pointer.pointer_count = AMotionEvent_getPointerCount(event);
 				break;
 			case AMOTION_EVENT_ACTION_POINTER_UP:
 				motion_event.action = MEDIA_ACTION_UP;
-				engine->pointer.pointer_state[index] = 0;
-				engine->pointer.pointer_count = AMotionEvent_getPointerCount(event);
 				break;
 			case AMOTION_EVENT_ACTION_MOVE:
 				motion_event.action = MEDIA_ACTION_MOVE;
 				break;
 			}
+			
+			engine->pointer.pointer_count = AMotionEvent_getPointerCount(event);
+			if(engine->pointer.pointer_count > POINTER_MAX)
+			{
+				engine->pointer.pointer_count = POINTER_MAX;
+			}
+			
+			for(i = 0; i < engine->pointer.pointer_count; ++i)
+			{
+				int x, y;
+				x = AMotionEvent_getX(event,i) - engine->width/2;
+				y = engine->height/2 - AMotionEvent_getY(event,i);
+				engine->pointer.pointer_rel[2*i] = x - engine->pointer.pointer[2*i];
+				engine->pointer.pointer_rel[2*i + 1] = y - engine->pointer.pointer[2*i + 1];
+				engine->pointer.pointer[2*i] = x;
+				engine->pointer.pointer[2*i + 1] = y;
+			}
+			/*
+			if(motion_event.action == MEDIA_ACTION_DOWN)
+			{
+				engine->pointer.pointer_rel[2*index] = 0;
+				engine->pointer.pointer_rel[2*index + 1] = 0;
+			}
+			*/
+			motion_event.x = engine->pointer.pointer[2*motion_event.index];
+			motion_event.y = engine->pointer.pointer[2*motion_event.index + 1];
+			motion_event.xval = engine->pointer.pointer_rel[2*motion_event.index];
+			motion_event.yval = engine->pointer.pointer_rel[2*motion_event.index + 1];
+			_Media_pushMotionEvent(app,&motion_event);
+			
 			break;
 		}
-		
-		for(i = 0; i < POINTER_MAX; ++i)
-		{
-			if(engine->pointer.pointer_state[i])
-			{
-				engine->pointer.pointer[2*i] = AMotionEvent_getX(event,i) - engine->width/2;
-				engine->pointer.pointer[2*i + 1] = engine->height/2 - AMotionEvent_getY(event,i);
-			}
-		}
-		motion_event.x = AMotionEvent_getX(event, motion_event.index) - engine->width/2;
-		motion_event.y = engine->height/2 - AMotionEvent_getY(event, motion_event.index);
-		_Media_pushMotionEvent(app,&motion_event);
 		
 		return 1;
 	/*
@@ -228,6 +240,25 @@ static int32_t engine_handle_input(struct android_app* android_app, AInputEvent*
   }
   
 	return 0;
+}
+
+static void __produce_motion_events(struct android_app* android_app)
+{
+	int i;
+	Media_App *app = (Media_App*)(android_app->userData);
+	struct engine *engine = (struct engine*)(app->platform_context);
+	Media_MotionEvent motion_event;
+	motion_event.action = MEDIA_ACTION_MOVE;
+	motion_event.button = MEDIA_BUTTON_LEFT;
+	for(i = 1; i < engine->pointer.pointer_count; ++i)
+	{
+		motion_event.index = i;
+		motion_event.x = engine->pointer.pointer[2*i];
+		motion_event.y = engine->pointer.pointer[2*i + 1];
+		motion_event.xval = engine->pointer.pointer_rel[2*i];
+		motion_event.yval = engine->pointer.pointer_rel[2*i + 1];
+		_Media_pushMotionEvent(app,&motion_event);
+	}
 }
 
 /**
@@ -341,6 +372,8 @@ static void engine_handle_events(Media_App *app, int mode)
 			}
 		}
 		
+		__produce_motion_events(engine->app);
+		
 		// Check if we are exiting.
 		if(engine->app->destroyRequested != 0) 
 		{
@@ -366,7 +399,7 @@ void Media_getPointer(Media_App *app, int *x, int *y)
 	*y = engine->pointer.pointer[1];
 }
 
-void Media_getPointerIndex(Media_App *app, int index, int *x, int *y)
+void Media_getPointerByIndex(Media_App *app, int index, int *x, int *y)
 {
 	struct engine *engine = (struct engine*)(app->platform_context);
 	if(index >= POINTER_MAX)

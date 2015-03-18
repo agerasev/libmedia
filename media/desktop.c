@@ -1,4 +1,4 @@
-#ifndef __ANDROID__
+#if defined(__gnu_linux__)
 
 #include "media.h"
 #include "common.h"
@@ -166,6 +166,8 @@ static void __handleEvent(Media_App *app, PlatformContext *context, const SDL_Ev
 		  MEDIA_BUTTON_RIGHT*context->mouse[2];
 		motion_event.x = event->motion.x - context->width/2;
 		motion_event.y = context->height/2 - event->motion.y;
+		motion_event.xval = event->motion.xrel;
+		motion_event.yval = -event->motion.yrel;
 		_Media_pushMotionEvent(app,&motion_event);
 		break;
 	case SDL_MOUSEBUTTONDOWN:
@@ -185,23 +187,13 @@ static void __handleEvent(Media_App *app, PlatformContext *context, const SDL_Ev
 		_Media_pushMotionEvent(app,&motion_event);
 		break;
 	case SDL_MOUSEWHEEL:
-		motion_event.action = 0;
+		motion_event.action = MEDIA_ACTION_WHEEL;
 		motion_event.button = 0;
 		motion_event.x = event->motion.x - context->width/2;
 		motion_event.y = context->height/2 - event->motion.y;
-		if(event->wheel.y > 0)
-		{
-			motion_event.action = MEDIA_ACTION_WHEEL_UP;
-		}
-		else
-		if(event->wheel.y < 0)
-		{
-			motion_event.action = MEDIA_ACTION_WHEEL_DOWN;
-		}
-		if(motion_event.action)
-		{
-			_Media_pushMotionEvent(app,&motion_event);
-		}
+		motion_event.xval = event->wheel.x;
+		motion_event.yval = event->wheel.y;
+		_Media_pushMotionEvent(app,&motion_event);
 		break;
 	default:
 		break;
@@ -235,7 +227,7 @@ void Media_getPointer(Media_App *app, int *x, int *y)
 	*y = pc->height/2 - my;
 }
 
-void Media_getPointerIndex(Media_App *app, int index, int *x, int *y)
+void Media_getPointerByIndex(Media_App *app, int index, int *x, int *y)
 {
 	Media_getPointer(app,x,y);
 }
