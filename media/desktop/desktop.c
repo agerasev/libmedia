@@ -1,28 +1,10 @@
-#if defined(__gnu_linux__)
+#include "platform.h"
 
-#include "media.h"
-#include "common.h"
+#ifdef __MEDIA_DESKTOP
+
+#include "desktop.h"
 
 #include <stdlib.h>
-#include <stdio.h>
-
-#include <SDL2/SDL.h>
-#include <GL/glew.h>
-#include <GL/glu.h>
-
-typedef struct PlatformContext
-{
-	SDL_Window *window;
-	SDL_GLContext context;
-	
-	int width;
-	int height;
-	
-	int mouse[3];
-	
-	int init_event_pushed;
-}
-PlatformContext;
 
 static int getButtonNum(int button)
 {
@@ -45,69 +27,7 @@ static int getButtonNum(int button)
 
 static const Media_ButtonType BUTTON[3] = { MEDIA_BUTTON_LEFT, MEDIA_BUTTON_MIDDLE, MEDIA_BUTTON_RIGHT };
 
-int __initDisplay(PlatformContext *context)
-{
-	context->width = 800;
-	context->height = 600;
-
-	context->window = SDL_CreateWindow(
-			"MediaApp",
-			SDL_WINDOWPOS_CENTERED,
-			SDL_WINDOWPOS_CENTERED,
-			context->width, context->height,
-			SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
-		);
-	
-	if(context->window == NULL)
-	{
-#ifdef DEBUG
-		printf("Could not create SDL_Window\n");
-#endif
-		return -1;
-	}
-	
-	context->context = SDL_GL_CreateContext(context->window);
-	
-	if(context->context == NULL)
-	{
-#ifdef DEBUG
-		printf("Could not create SDL_GL_Context\n");
-#endif
-		return -2;
-	}
-
-	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
-	SDL_GL_SetAttribute(SDL_GL_RED_SIZE,5);
-	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,6);
-	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,5);
-	SDL_GL_SetSwapInterval(1);
-
-	GLenum glew_status = glewInit();
-	if(GLEW_OK != glew_status)
-	{
-#ifdef DEBUG
-		printf("Could not init glew: %s\n",glewGetErrorString(glew_status));
-#endif
-		return -3;
-	}
-	if(!GLEW_VERSION_2_0)
-	{
-#ifdef DEBUG
-		printf("No support for OpenGL 2.0 found\n");
-#endif
-		return -4;
-	}
-	
-	return 0;
-}
-
-void __termDisplay(PlatformContext *context)
-{
-	SDL_GL_DeleteContext(context->context);
-	SDL_DestroyWindow(context->window);
-}
-
-static void __handleEvent(Media_App *app, PlatformContext *context, const SDL_Event *event)
+static void __handleEvent(Media_App *app, Media_PlatformContext *context, const SDL_Event *event)
 {
 	Media_AppEvent app_event;
 	Media_SurfaceEvent surface_event;
@@ -205,7 +125,7 @@ void Media_handleEvents(Media_App *app)
 	SDL_Event event;
 	while(SDL_PollEvent(&event))
 	{
-		__handleEvent(app,(PlatformContext*)(app->platform_context),&event);
+		__handleEvent(app,app->platform_context,&event);
 	}
 }
 
@@ -214,13 +134,13 @@ void Media_waitForEvent(Media_App *app)
 	SDL_Event event;
 	if(SDL_WaitEvent(&event))
 	{
-		__handleEvent(app,(PlatformContext*)(app->platform_context),&event);
+		__handleEvent(app,app->platform_context,&event);
 	}
 }
 
 void Media_getPointer(Media_App *app, int *x, int *y)
 {
-	PlatformContext* pc = (PlatformContext*)app->platform_context;
+	Media_PlatformContext* pc = app->platform_context;
 	int mx, my;
 	SDL_GetMouseState(&mx,&my);
 	*x = mx - pc->width/2;
@@ -234,7 +154,7 @@ void Media_getPointerByIndex(Media_App *app, int index, int *x, int *y)
 
 int Media_getPointerCount(Media_App *app)
 {
-	PlatformContext* pc = (PlatformContext*)app->platform_context;
+	Media_PlatformContext* pc = app->platform_context;
 	return (pc->mouse[0] + pc->mouse[1] + pc->mouse[2]) > 0;
 }
 
@@ -244,7 +164,7 @@ void Media_renderFrame(Media_App *app)
 	{
 		app->renderer(app);
 	}
-	SDL_GL_SwapWindow(((PlatformContext*)(app->platform_context))->window);
+	SDL_GL_SwapWindow(app->platform_context->window);
 }
 
 int Media_enableSensor(Media_App *app, Media_SensorType type, unsigned long rate)
@@ -260,7 +180,7 @@ int Media_disableSensor(Media_App *app, Media_SensorType type)
 int main(int argc, char *argv[])
 {
 	Media_App app;
-	PlatformContext context;
+	Media_PlatformContext context;
 	
 	_Media_initApp(&app);
 	
@@ -272,12 +192,12 @@ int main(int argc, char *argv[])
 	
 	int returned_value;
 	
-	__initDisplay(&context);
+	_Media_initGraphics(&context);
 	
-	app.platform_context = (void*)&context;
+	app.platform_context = &context;
 	returned_value = Media_main(&app);
 	
-	__termDisplay(&context);
+	_Media_disposeGraphics(&context);
 	
 	_Media_freeApp(&app);
 	

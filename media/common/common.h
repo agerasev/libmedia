@@ -1,6 +1,6 @@
 #pragma once
 
-#include "media.h"
+#include "../media.h"
 
 void _Media_initApp(Media_App *app);
 void _Media_freeApp(Media_App *app);

@@ -15,142 +15,19 @@
  *
  */
 
-#ifdef __ANDROID__
+#include "platform.h"
 
-#include "media.h"
-#include "common.h"
+#ifdef __MEDIA_ANDROID
+
+#include "android.h"
 
 #include <jni.h>
 #include <errno.h>
 
-#include <EGL/egl.h>
-#include <GLES2/gl2.h>
-
-#include <android/sensor.h>
 #include <android/log.h>
-#include <android_native_app_glue.h>
 
 #define LOGI(...) (printInfo(__VA_ARGS__))
 #define LOGW(...) (printWarn(__VA_ARGS__))
-
-#define POINTER_MAX 0x40
-
-struct pointer
-{
-	int pointer_count;
-	int pointer[2*POINTER_MAX];
-	int pointer_rel[2*POINTER_MAX];
-};
-
-struct engine 
-{
-	struct android_app* app;
-	
-	EGLDisplay display;
-	EGLSurface surface;
-	EGLContext context;
-	int32_t width;
-	int32_t height;
-	
-	int frame_counter;
-	struct pointer pointer;
-  
-	ASensorManager* sensorManager;
-	const ASensor* accelerometerSensor;
-	ASensorEventQueue* sensorEventQueue;
-};
-
-static int __initDisplay(struct engine *engine)
-{
-	// initialize OpenGL ES and EGL
-
-	/*
-	 * Here specify the attributes of the desired configuration.
-	 * Below, we select an EGLConfig with at least 8 bits per color
-	 * component compatible with on-screen windows
-	 */
-	const EGLint attribs[] = 
-	{
-		EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-		EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-		EGL_BLUE_SIZE, 8,
-		EGL_GREEN_SIZE, 8,
-		EGL_RED_SIZE, 8,
-		EGL_NONE
-	};
-	EGLint w, h, format;
-	EGLint numConfigs;
-	EGLConfig config;
-	EGLSurface surface;
-	EGLContext context;
-
-	EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-
-	eglInitialize(display, 0, 0);
-
-	/* Here, the application chooses the configuration it desires. In this
-	 * sample, we have a very simplified selection process, where we pick
-	 * the first EGLConfig that matches our criteria */
-	eglChooseConfig(display, attribs, &config, 1, &numConfigs);
-
-	/* EGL_NATIVE_VISUAL_ID is an attribute of the EGLConfig that is
-	 * guaranteed to be accepted by ANativeWindow_setBuffersGeometry().
-	 * As soon as we picked a EGLConfig, we can safely reconfigure the
-	 * ANativeWindow buffers to match, using EGL_NATIVE_VISUAL_ID. */
-	eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &format);
-
-	ANativeWindow_setBuffersGeometry(engine->app->window, 0, 0, format);
-
-	surface = eglCreateWindowSurface(display, config, engine->app->window, NULL);
-	
-	EGLint attrib_list[] = 
-	{
-		EGL_CONTEXT_CLIENT_VERSION, 2,
-		EGL_NONE
-	};
-	
-	context = eglCreateContext(display, config, NULL, attrib_list);
-
-	if (eglMakeCurrent(display, surface, surface, context) == EGL_FALSE) 
-	{
-#ifdef DEBUG
-		LOGW("Unable to eglMakeCurrent");
-#endif
-		return -1;
-	}
-
-	eglQuerySurface(display, surface, EGL_WIDTH, &w);
-	eglQuerySurface(display, surface, EGL_HEIGHT, &h);
-
-	engine->display = display;
-	engine->context = context;
-	engine->surface = surface;
-	engine->width = w;
-	engine->height = h;
-
-	// Initialize GL state.
-	glEnable(GL_CULL_FACE);
-	glDisable(GL_DEPTH_TEST);
-	return 0;
-}
-
-static void __termDisplay(struct engine *engine)
-{
-	if (engine->display != EGL_NO_DISPLAY) {
-		eglMakeCurrent(engine->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-		if (engine->context != EGL_NO_CONTEXT) {
-			eglDestroyContext(engine->display, engine->context);
-		}
-		if (engine->surface != EGL_NO_SURFACE) {
-			eglDestroySurface(engine->display, engine->surface);
-		}
-		eglTerminate(engine->display);
-	}
-
-	engine->display = EGL_NO_DISPLAY;
-	engine->context = EGL_NO_CONTEXT;
-	engine->surface = EGL_NO_SURFACE;
-}
 
 /**
  * Process the next input event.
@@ -159,7 +36,7 @@ static int32_t engine_handle_input(struct android_app* android_app, AInputEvent*
 {
 	int i;
 	Media_App *app = (Media_App*)(android_app->userData);
-	struct engine *engine = (struct engine*)(app->platform_context);
+	Media_PlatformContext *engine = app->platform_context;
 	Media_MotionEvent motion_event;
 	int32_t action;
 	int index;
@@ -199,33 +76,33 @@ static int32_t engine_handle_input(struct android_app* android_app, AInputEvent*
 				break;
 			}
 			
-			engine->pointer.pointer_count = AMotionEvent_getPointerCount(event);
-			if(engine->pointer.pointer_count > POINTER_MAX)
+			engine->pointer.count = AMotionEvent_getPointerCount(event);
+			if(engine->pointer.count > POINTER_MAX)
 			{
-				engine->pointer.pointer_count = POINTER_MAX;
+				engine->pointer.count = POINTER_MAX;
 			}
 			
-			for(i = 0; i < engine->pointer.pointer_count; ++i)
+			for(i = 0; i < engine->pointer.count; ++i)
 			{
 				int x, y;
 				x = AMotionEvent_getX(event,i) - engine->width/2;
 				y = engine->height/2 - AMotionEvent_getY(event,i);
-				engine->pointer.pointer_rel[2*i] = x - engine->pointer.pointer[2*i];
-				engine->pointer.pointer_rel[2*i + 1] = y - engine->pointer.pointer[2*i + 1];
-				engine->pointer.pointer[2*i] = x;
-				engine->pointer.pointer[2*i + 1] = y;
+				engine->pointer.rel[i].x = x - engine->pointer.pos[i].x;
+				engine->pointer.rel[i].y = y - engine->pointer.pos[i].y;
+				engine->pointer.pos[i].x = x;
+				engine->pointer.pos[i].y = y;
 			}
 			/*
 			if(motion_event.action == MEDIA_ACTION_DOWN)
 			{
-				engine->pointer.pointer_rel[2*index] = 0;
-				engine->pointer.pointer_rel[2*index + 1] = 0;
+				engine->pointer.rel[index].x = 0;
+				engine->pointer.rel[index].y = 0;
 			}
 			*/
-			motion_event.x = engine->pointer.pointer[2*motion_event.index];
-			motion_event.y = engine->pointer.pointer[2*motion_event.index + 1];
-			motion_event.xval = engine->pointer.pointer_rel[2*motion_event.index];
-			motion_event.yval = engine->pointer.pointer_rel[2*motion_event.index + 1];
+			motion_event.x = engine->pointer.pos[motion_event.index].x;
+			motion_event.y = engine->pointer.pos[motion_event.index].y;
+			motion_event.xval = engine->pointer.rel[motion_event.index].x;
+			motion_event.yval = engine->pointer.rel[motion_event.index].y;
 			_Media_pushMotionEvent(app,&motion_event);
 			
 			break;
@@ -246,17 +123,17 @@ static void __produce_motion_events(struct android_app* android_app)
 {
 	int i;
 	Media_App *app = (Media_App*)(android_app->userData);
-	struct engine *engine = (struct engine*)(app->platform_context);
+	Media_PlatformContext *engine = app->platform_context;
 	Media_MotionEvent motion_event;
 	motion_event.action = MEDIA_ACTION_MOVE;
 	motion_event.button = MEDIA_BUTTON_LEFT;
-	for(i = 1; i < engine->pointer.pointer_count; ++i)
+	for(i = 1; i < engine->pointer.count; ++i)
 	{
 		motion_event.index = i;
-		motion_event.x = engine->pointer.pointer[2*i];
-		motion_event.y = engine->pointer.pointer[2*i + 1];
-		motion_event.xval = engine->pointer.pointer_rel[2*i];
-		motion_event.yval = engine->pointer.pointer_rel[2*i + 1];
+		motion_event.x = engine->pointer.pos[i].x;
+		motion_event.y = engine->pointer.pos[i].y;
+		motion_event.xval = engine->pointer.rel[i].x;
+		motion_event.yval = engine->pointer.rel[i].y;
 		_Media_pushMotionEvent(app,&motion_event);
 	}
 }
@@ -267,7 +144,7 @@ static void __produce_motion_events(struct android_app* android_app)
 static void engine_handle_cmd(struct android_app* android_app, int32_t cmd) 
 {
 	Media_App *app = (Media_App*)(android_app->userData);
-	struct engine *engine = (struct engine*)(app->platform_context);
+	Media_PlatformContext *engine = app->platform_context;
 	Media_AppEvent app_event;
 	Media_SurfaceEvent surface_event;
 #ifdef DEBUG
@@ -280,7 +157,7 @@ static void engine_handle_cmd(struct android_app* android_app, int32_t cmd)
 		_Media_pushAppEvent(app,&app_event);
 		break;
 	case APP_CMD_INIT_WINDOW:
-		__initDisplay(engine);
+		_Media_initGraphics(engine);
 		surface_event.w = engine->width;
 		surface_event.h = engine->height;
 		surface_event.type = MEDIA_SURFACE_INIT;
@@ -289,7 +166,7 @@ static void engine_handle_cmd(struct android_app* android_app, int32_t cmd)
 		_Media_pushSurfaceEvent(app,&surface_event);
 		break;
 	case APP_CMD_TERM_WINDOW:
-		__termDisplay(engine);
+		_Media_disposeGraphics(engine);
 		surface_event.type = MEDIA_SURFACE_TERM;
 		_Media_pushSurfaceEvent(app,&surface_event);
 		break;
@@ -314,7 +191,7 @@ static void engine_handle_cmd(struct android_app* android_app, int32_t cmd)
 
 static void engine_handle_events(Media_App *app, int mode)
 {
-	struct engine *engine = (struct engine*)(app->platform_context);
+	Media_PlatformContext *engine = app->platform_context;
 	if(engine->frame_counter > 0)
 	{
 		engine->frame_counter--;
@@ -394,30 +271,30 @@ void Media_waitForEvent(Media_App *app)
 
 void Media_getPointer(Media_App *app, int *x, int *y)
 {
-	struct engine *engine = (struct engine*)(app->platform_context);
-	*x = engine->pointer.pointer[0];
-	*y = engine->pointer.pointer[1];
+	Media_PlatformContext *engine = app->platform_context;
+	*x = engine->pointer.pos[0].x;
+	*y = engine->pointer.pos[0].y;
 }
 
 void Media_getPointerByIndex(Media_App *app, int index, int *x, int *y)
 {
-	struct engine *engine = (struct engine*)(app->platform_context);
+	Media_PlatformContext *engine = app->platform_context;
 	if(index >= POINTER_MAX)
 	{
 		return;
 	}
-	*x = engine->pointer.pointer[2*index];
-	*y = engine->pointer.pointer[2*index + 1];
+	*x = engine->pointer.pos[index].x;
+	*y = engine->pointer.pos[index].y;
 }
 
 int Media_getPointerCount(Media_App *app)
 {
-	return ((struct engine*)(app->platform_context))->pointer.pointer_count;
+	return app->platform_context->pointer.count;
 }
 
 void Media_renderFrame(Media_App *app)
 {
-	struct engine *engine = (struct engine*)(app->platform_context);
+	Media_PlatformContext *engine = app->platform_context;
 	if(engine->display == NULL) 
 	{
 		// No display.
@@ -432,7 +309,7 @@ void Media_renderFrame(Media_App *app)
 
 int Media_enableSensor(Media_App *app, Media_SensorType type, unsigned long rate)
 {
-	struct engine *engine = (struct engine*)(app->platform_context);
+	Media_PlatformContext *engine = app->platform_context;
 	if(type == MEDIA_SENSOR_ACCELEROMETER && engine->accelerometerSensor != NULL) 
 	{
 		ASensorEventQueue_enableSensor(engine->sensorEventQueue,engine->accelerometerSensor);
@@ -444,7 +321,7 @@ int Media_enableSensor(Media_App *app, Media_SensorType type, unsigned long rate
 
 int Media_disableSensor(Media_App *app, Media_SensorType type)
 {
-	struct engine *engine = (struct engine*)(app->platform_context);
+	Media_PlatformContext *engine = app->platform_context;
 	if(type == MEDIA_SENSOR_ACCELEROMETER && engine->accelerometerSensor != NULL) 
 	{
 		ASensorEventQueue_disableSensor(engine->sensorEventQueue,engine->accelerometerSensor);
@@ -461,20 +338,20 @@ int Media_disableSensor(Media_App *app, Media_SensorType type)
 void android_main(struct android_app* state) 
 {
 	Media_App app;
-	struct engine engine;
+	Media_PlatformContext engine;
 	
 	// Make sure glue isn't stripped.
 	app_dummy();
 	
 	_Media_initApp(&app);
 	
-	memset(&engine,0,sizeof(struct engine));
+	memset(&engine,0,sizeof(Media_PlatformContext));
 	state->userData = &app;
 	state->onAppCmd = engine_handle_cmd;
 	state->onInputEvent = engine_handle_input;
 	engine.app = state;
 	
-	app.platform_context = (void*)&engine;
+	app.platform_context = &engine;
 	
 	// Prepare to monitor accelerometer
   engine.sensorManager = ASensorManager_getInstance();
