@@ -6,7 +6,9 @@
 #define PUSH_EVENT(app,handler,event) \
 	int __i = 0; \
 	for(__i = 0; __i < app->listeners_size; ++__i) { \
-		app->listeners[__i]->handler(event,app->listeners[__i]->data); \
+		if(app->listeners[__i]->handler) { \
+			app->listeners[__i]->handler(event,app->listeners[__i]->data); \
+		} \
 	}
 
 void _Media_pushAppEvent(Media_App *app, const Media_AppEvent *event) 
