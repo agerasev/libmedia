@@ -43,6 +43,8 @@ static void __handleEvent(Media_App *app, Media_PlatformContext *context, const 
 		context->init_event_pushed = 1;
 	}
 	
+	motion_event.index = 0;
+	
 	switch(event->type)
 	{
 	case SDL_QUIT:
