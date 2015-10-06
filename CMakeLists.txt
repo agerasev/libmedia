@@ -1,15 +1,14 @@
 cmake_minimum_required(VERSION 2.6)
-project(media)
+project(media-test)
 
 include_directories(include)
 
-set(SOURCE 
-	source/common/common.c
-	source/desktop/assets.c
-	source/desktop/desktop.c
-	source/desktop/graphics.c
+set(SOURCE
+	source/main.c
 )
 
-add_library(${PROJECT_NAME} STATIC ${SOURCE})
+add_executable(${PROJECT_NAME} ${SOURCE})
 
-target_link_libraries(${PROJECT_NAME} SDL2 GL glew)
+add_subdirectory(libmedia)
+include_directories(libmedia/include)
+target_link_libraries(${PROJECT_NAME} media)
