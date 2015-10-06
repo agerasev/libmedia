@@ -1,7 +1,6 @@
 #pragma once
 
-#include "./desktop/platform.h"
-#include "./android/platform.h"
+#include "desktop/platform.h"
 
 #include "log.h"
 #include "event.h"

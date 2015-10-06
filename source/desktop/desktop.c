@@ -1,8 +1,8 @@
-#include "platform.h"
+#include <media/desktop/platform.h>
 
 #ifdef __MEDIA_DESKTOP
 
-#include "desktop.h"
+#include <media/desktop/desktop.h>
 
 #include <stdlib.h>
 

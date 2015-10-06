@@ -1,5 +1,5 @@
-#include "../media.h"
-#include "common.h"
+#include <media/media.h>
+#include <media/common/common.h>
 
 #include <stdlib.h>
 

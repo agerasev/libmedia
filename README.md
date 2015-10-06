@@ -1,2 +1,2 @@
 # libmedia
-Layer for desktop and android applications
+API layer for desktop multimedia applications
