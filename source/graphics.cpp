@@ -1,8 +1,6 @@
-#include <media/desktop/platform.h>
+#include <media/log.hpp>
 
-#ifdef __MEDIA_DESKTOP
-
-#include <media/desktop/desktop.h>
+#include "graphics.hpp"
 
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
@@ -23,7 +21,7 @@ int _Media_initGraphics(Media_PlatformContext *context)
 	
 	if(context->window == NULL)
 	{
-		printWarn("Could not create SDL_Window\n");
+		logWarning("Could not create SDL_Window\n");
 		return -1;
 	}
 	
@@ -31,7 +29,7 @@ int _Media_initGraphics(Media_PlatformContext *context)
 	
 	if(context->context == NULL)
 	{
-		printWarn("Could not create SDL_GL_Context\n");
+		logWarning("Could not create SDL_GL_Context\n");
 		return -2;
 	}
 
@@ -44,12 +42,12 @@ int _Media_initGraphics(Media_PlatformContext *context)
 	GLenum glew_status = glewInit();
 	if(GLEW_OK != glew_status)
 	{
-		printWarn("Could not init glew: %s\n",glewGetErrorString(glew_status));
+		logWarning("Could not init glew: %s\n",glewGetErrorString(glew_status));
 		return -3;
 	}
 	if(!GLEW_VERSION_2_0)
 	{
-		printWarn("No support for OpenGL 2.0 found\n");
+		logWarning("No support for OpenGL 2.0 found\n");
 		return -4;
 	}
 	
@@ -62,4 +60,3 @@ void _Media_disposeGraphics(Media_PlatformContext *context)
 	SDL_DestroyWindow(context->window);
 }
 
-#endif

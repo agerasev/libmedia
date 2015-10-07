@@ -1,13 +1,12 @@
 cmake_minimum_required(VERSION 2.6)
 project(media)
 
+set(CMAKE_CXX_FLAGS "-Wall -std=c++11")
+
 include_directories(include)
 
 set(SOURCE 
-	source/common/common.c
-	source/desktop/assets.c
-	source/desktop/desktop.c
-	source/desktop/graphics.c
+	source/desktop.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC ${SOURCE})
