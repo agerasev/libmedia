@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 2.6)
 project(media-test)
 
+set(CMAKE_CXX_FLAGS "-Wall -std=c++11")
+
 include_directories(include)
 
 set(SOURCE
-	source/main.c
+	source/main.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCE})
