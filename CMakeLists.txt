@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(media-test)
 
-set(CMAKE_CXX_FLAGS "-Wall -std=c++11")
+set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -g")
 
 include_directories(include)
 
