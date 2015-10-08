@@ -24,8 +24,8 @@ void DesktopApp::destroy() {
 DesktopGraphics *DesktopApp::getGraphics() {
 	return &graphics;
 }
-Pointer *DesktopApp::getPointer() {
-	return nullptr;
+DesktopPointer *DesktopApp::getPointer() {
+	return &pointer;
 }
 Sensor *DesktopApp::getSensor() {
 	return nullptr;

@@ -62,6 +62,10 @@ DesktopGraphics::~DesktopGraphics()
 	SDL_DestroyWindow(window);
 }
 
+ivec2 DesktopGraphics::getBounds() const {
+	return ivec2(width, height);
+}
+
 bool DesktopGraphics::isValid() const {
 	return valid;
 }
@@ -80,7 +84,8 @@ void DesktopGraphics::destroy() {
 
 void DesktopGraphics::resize() {
 	if(getHandler() != nullptr) {
-		getHandler()->resize(getWidth(), getHeight());
+		ivec2 s = getBounds();
+		getHandler()->resize(s.x(), s.y());
 	}
 }
 

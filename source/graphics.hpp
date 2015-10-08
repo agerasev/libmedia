@@ -10,6 +10,7 @@
 namespace media {
 class DesktopGraphics : public Graphics {
 private:
+	int width, height;
 	SDL_Window *window;
 	SDL_GLContext context;
 	bool valid = false;
@@ -19,6 +20,8 @@ private:
 public:
 	DesktopGraphics();
 	virtual ~DesktopGraphics();
+	
+	virtual ivec2 getBounds() const override;
 	
 	bool isValid() const;
 	

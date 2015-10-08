@@ -1,13 +1,35 @@
 #include "event.hpp"
 
-bool handle(media::DesktopApp *app, const SDL_Event &event) {
-	switch(event.type)
-	{
+using namespace media;
+
+static int getButton(int sdl_button)
+{
+	switch(sdl_button) {
+	case SDL_BUTTON_LEFT:
+		return Pointer::LEFT;
+	case SDL_BUTTON_MIDDLE:
+		return Pointer::MIDDLE;
+	case SDL_BUTTON_RIGHT:
+		return Pointer::RIGHT;
+	default:
+		return 0;
+	}
+}
+
+static ivec2 getPos(DesktopApp *app, ivec2 sdl_pos) {
+	ivec2 bounds = app->getGraphics()->getBounds();
+	return ivec2(
+	      sdl_pos.x() - bounds.x()/2, 
+	      bounds.y()/2 - sdl_pos.y()
+	      );
+}
+
+bool handle(DesktopApp *app, const SDL_Event &event) {
+	switch(event.type) {
 	case SDL_QUIT:
 		return true;
 	case SDL_WINDOWEVENT:
-		switch(event.window.event) 
-		{
+		switch(event.window.event) {
 		case SDL_WINDOWEVENT_RESIZED:
 			app->getGraphics()->resize(event.window.data1, event.window.data2);
 			break;
@@ -23,45 +45,30 @@ bool handle(media::DesktopApp *app, const SDL_Event &event) {
 			break;
 		}
 		break;
-	/*
-	case SDL_MOUSEMOTION:
-		motion_event.action = MEDIA_ACTION_MOVE;
-		motion_event.button = 
-			MEDIA_BUTTON_LEFT*context->mouse[0] |
-			MEDIA_BUTTON_MIDDLE*context->mouse[1] |
-			MEDIA_BUTTON_RIGHT*context->mouse[2];
-		motion_event.x = event->motion.x - context->width/2;
-		motion_event.y = context->height/2 - event->motion.y;
-		motion_event.xval = event->motion.xrel;
-		motion_event.yval = -event->motion.yrel;
-		_Media_pushMotionEvent(app,&motion_event);
+	case SDL_MOUSEMOTION: {
+		ivec2 pos = getPos(app, ivec2(event.motion.x, event.motion.y));
+		ivec2 rel(event.motion.xrel, -event.motion.yrel);
+		app->getPointer()->move(pos - rel, pos);
 		break;
+	}
 	case SDL_MOUSEBUTTONDOWN:
-		context->mouse[getButtonNum(event->button.button)] = 1;
-		motion_event.action = MEDIA_ACTION_DOWN;
-		motion_event.button = BUTTON[getButtonNum(event->button.button)];
-		motion_event.x = event->motion.x - context->width/2;
-		motion_event.y = context->height/2 - event->motion.y;
-		_Media_pushMotionEvent(app,&motion_event);
+		app->getPointer()->down(
+		      getButton(event.button.button),
+		      getPos(app, ivec2(event.motion.x, event.motion.y))
+		      );
 		break;
 	case SDL_MOUSEBUTTONUP:
-		context->mouse[getButtonNum(event->button.button)] = 0;
-		motion_event.action = MEDIA_ACTION_UP;
-		motion_event.button = BUTTON[getButtonNum(event->button.button)];
-		motion_event.x = event->motion.x - context->width/2;
-		motion_event.y = context->height/2 - event->motion.y;
-		_Media_pushMotionEvent(app,&motion_event);
+		app->getPointer()->up(
+		      getButton(event.button.button),
+		      getPos(app, ivec2(event.motion.x, event.motion.y))
+		      );
 		break;
 	case SDL_MOUSEWHEEL:
-		motion_event.action = MEDIA_ACTION_WHEEL;
-		motion_event.button = 0;
-		motion_event.x = event->motion.x - context->width/2;
-		motion_event.y = context->height/2 - event->motion.y;
-		motion_event.xval = event->wheel.x;
-		motion_event.yval = event->wheel.y;
-		_Media_pushMotionEvent(app,&motion_event);
+		app->getPointer()->scroll(
+		      getPos(app, ivec2(event.motion.x, event.motion.y)),
+		      ivec2(event.wheel.x, event.wheel.y)
+		      );
 		break;
-	*/
 	default:
 		break;
 	}

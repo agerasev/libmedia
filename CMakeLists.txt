@@ -4,12 +4,14 @@ project(media)
 set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -g")
 
 include_directories(include)
+include_directories(libla)
 
 set(SOURCE 
 	source/main.cpp
 	source/event.cpp
 	source/app.cpp
 	source/graphics.cpp
+	source/pointer.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC ${SOURCE})

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <la/vec.hpp>
+
 namespace media {
 class Graphics {
 public:
@@ -15,19 +17,11 @@ public:
 		virtual void resize(int, int) {}
 	};
 	
-protected:
-	int width = 0, height = 0;
-	
 public:
 	Graphics() = default;
 	virtual ~Graphics() = default;
 	
-	int getWidth() const {
-		return width;
-	}
-	int getHeight() const {
-		return height;
-	}
+	virtual ivec2 getBounds() const = 0;
 	
 	virtual void setHandler(Handler *l) = 0;
 	virtual Handler *getHandler() const = 0;
