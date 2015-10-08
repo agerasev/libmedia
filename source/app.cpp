@@ -10,6 +10,17 @@ DesktopApp::~DesktopApp() {
 	
 }
 
+void DesktopApp::create() {
+	getHandler()->create();
+	getGraphics()->create();
+	getGraphics()->resize();
+}
+
+void DesktopApp::destroy() {
+	getHandler()->destroy();
+	getGraphics()->destroy();
+}
+
 DesktopGraphics *DesktopApp::getGraphics() {
 	return &graphics;
 }

@@ -21,7 +21,7 @@ DesktopGraphics::DesktopGraphics()
 			SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
 		);
 	
-	if(window == NULL)
+	if(window == nullptr)
 	{
 		logWarning("Could not create SDL_Window\n");
 		return;
@@ -29,7 +29,7 @@ DesktopGraphics::DesktopGraphics()
 	
 	context = SDL_GL_CreateContext(window);
 	
-	if(context == NULL)
+	if(context == nullptr)
 	{
 		logWarning("Could not create SDL_GL_Context\n");
 		return;
@@ -66,6 +66,30 @@ bool DesktopGraphics::isValid() const {
 	return valid;
 }
 
+void DesktopGraphics::create() {
+	if(getHandler() != nullptr) {
+		getHandler()->create();
+	}
+}
+
+void DesktopGraphics::destroy() {
+	if(getHandler() != nullptr) {
+		getHandler()->destroy();
+	}
+}
+
+void DesktopGraphics::resize() {
+	if(getHandler() != nullptr) {
+		getHandler()->resize(getWidth(), getHeight());
+	}
+}
+
+void DesktopGraphics::resize(int w, int h) {
+	width = w;
+	height = h;
+	resize();
+}
+
 SDL_Window *DesktopGraphics::getWindow() {
 	return window;
 }
@@ -76,7 +100,9 @@ SDL_GLContext DesktopGraphics::getGLContext() {
 
 void DesktopGraphics::setHandler(Handler *h) {
 	handler = h;
-	handler->super = this;
+	if(handler != nullptr) {
+		handler->super = this;
+	}
 }
 
 Graphics::Handler *DesktopGraphics::getHandler() const {

@@ -6,6 +6,10 @@ public:
 	class Handler {
 	public:
 		Graphics *super;
+		
+		Handler() = default;
+		virtual ~Handler() = default;
+		
 		virtual void create() {}
 		virtual void destroy() {}
 		virtual void resize(int, int) {}
@@ -15,8 +19,8 @@ protected:
 	int width = 0, height = 0;
 	
 public:
-	Graphics() {}
-	virtual ~Graphics() {}
+	Graphics() = default;
+	virtual ~Graphics() = default;
 	
 	int getWidth() const {
 		return width;

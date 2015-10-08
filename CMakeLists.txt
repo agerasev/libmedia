@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 2.6)
 project(media)
 
-set(CMAKE_CXX_FLAGS "-Wall -std=c++11")
+set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -g")
 
 include_directories(include)
 
 set(SOURCE 
 	source/main.cpp
+	source/event.cpp
 	source/app.cpp
 	source/graphics.cpp
 )

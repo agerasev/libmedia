@@ -19,7 +19,13 @@ private:
 public:
 	DesktopGraphics();
 	virtual ~DesktopGraphics();
+	
 	bool isValid() const;
+	
+	void create();
+	void destroy();
+	void resize();
+	void resize(int w, int h);
 	
 	SDL_Window *getWindow();
 	SDL_GLContext getGLContext();

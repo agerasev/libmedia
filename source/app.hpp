@@ -7,12 +7,14 @@ namespace media {
 class DesktopApp : public App {
 private:
 	DesktopGraphics graphics;
-	
 	Handler *handler;
 	
 public:
 	DesktopApp();
 	virtual ~DesktopApp();
+	
+	void create();
+	void destroy();
 	
 	virtual DesktopGraphics *getGraphics() override;
 	virtual Pointer *getPointer() override;

@@ -14,6 +14,9 @@ public:
 	public:
 		App *super = nullptr;
 		
+		Handler() = default;
+		virtual ~Handler() = default;
+		
 		virtual void create() {}
 		virtual void create(const std::vector<std::string> &) {
 			create();
@@ -26,8 +29,8 @@ public:
 	};
 	
 public:
-	App() {}
-	virtual ~App() {}
+	App() = default;
+	virtual ~App() = default;
 	
 	virtual Graphics *getGraphics() = 0;
 	virtual Pointer *getPointer() = 0;

@@ -1,23 +1,37 @@
 #include <media/media.hpp>
 
+#include <SDL2/SDL.h>
+
 #include "app.hpp"
+#include "event.hpp"
 
 #include <string>
 #include <vector>
 
-#include <unistd.h>
+using namespace media;
 
-extern media::App::Handler *__app_handler;
-static media::DesktopApp this_app;
+extern App::Handler *__app_handler;
+static DesktopApp *this_app;
 
 int main(int argc, char *argv[]) {
 	std::vector<std::string> args;
 	for(int i = 0; i < argc; ++i) {
 		args.push_back(argv[i]);
 	}
-	this_app.setHandler(__app_handler);
-	this_app.getHandler()->create(args);
-	sleep(1);
-	this_app.getHandler()->destroy();
+	
+	this_app = new DesktopApp();
+	this_app->setHandler(__app_handler);
+	this_app->create();
+	
+	bool done = false;
+	while(!done) {
+		SDL_Event event;
+		while(SDL_PollEvent(&event)) {
+			done = handle(this_app, event);
+		}
+	}
+	
+	this_app->destroy();
+	delete this_app;
 	return 0;
 }
