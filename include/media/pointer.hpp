@@ -3,7 +3,7 @@
 namespace media {
 class Pointer {
 public:
-	class Listener {
+	class Handler {
 		virtual void up() {}
 		virtual void down() {}
 		virtual void click() {}

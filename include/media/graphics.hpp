@@ -3,20 +3,19 @@
 namespace media {
 class Graphics {
 public:
-	class Listener {
+	class Handler {
 	public:
 		Graphics *super;
 		virtual void create() {}
 		virtual void destroy() {}
 		virtual void resize(int, int) {}
 	};
+	
 protected:
-	Listener *listener = nullptr;
 	int width = 0, height = 0;
-	Graphics();
-	Graphics(const Graphics &) = delete;
-	Graphics &operator=(const Graphics &) = delete;
+	
 public:
+	Graphics() {}
 	virtual ~Graphics() {}
 	
 	int getWidth() const {
@@ -26,12 +25,7 @@ public:
 		return height;
 	}
 	
-	setListener(Listener *l) {
-		listener = l;
-		listener->super = this;
-	}
-	Listener *getListener() const {
-		return listener;
-	}
+	virtual void setHandler(Handler *l) = 0;
+	virtual Handler *getHandler() const = 0;
 };
 }

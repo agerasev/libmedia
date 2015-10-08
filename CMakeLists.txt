@@ -6,7 +6,9 @@ set(CMAKE_CXX_FLAGS "-Wall -std=c++11")
 include_directories(include)
 
 set(SOURCE 
-	source/desktop.cpp
+	source/main.cpp
+	source/app.cpp
+	source/graphics.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC ${SOURCE})

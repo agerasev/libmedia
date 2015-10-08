@@ -3,7 +3,7 @@
 namespace media {
 class Sensor {
 public:
-	class Listener {
+	class Handler {
 		virtual void accelerometer(double, double, double) {}
 	};
 };

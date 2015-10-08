@@ -6,57 +6,79 @@
 #include <GL/glew.h>
 #include <GL/glu.h>
 
-int _Media_initGraphics(Media_PlatformContext *context)
-{
-	context->width = 800;
-	context->height = 600;
+using namespace media;
 
-	context->window = SDL_CreateWindow(
+DesktopGraphics::DesktopGraphics()
+{
+	width = 800;
+	height = 600;
+
+	window = SDL_CreateWindow(
 			"MediaApp",
 			SDL_WINDOWPOS_CENTERED,
 			SDL_WINDOWPOS_CENTERED,
-			context->width, context->height,
+			width, height,
 			SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
 		);
 	
-	if(context->window == NULL)
+	if(window == NULL)
 	{
 		logWarning("Could not create SDL_Window\n");
-		return -1;
+		return;
 	}
 	
-	context->context = SDL_GL_CreateContext(context->window);
+	context = SDL_GL_CreateContext(window);
 	
-	if(context->context == NULL)
+	if(context == NULL)
 	{
 		logWarning("Could not create SDL_GL_Context\n");
-		return -2;
+		return;
 	}
 
-	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
-	SDL_GL_SetAttribute(SDL_GL_RED_SIZE,5);
-	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,6);
-	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,5);
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 5);
+	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 6);
+	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 5);
 	SDL_GL_SetSwapInterval(1);
 
 	GLenum glew_status = glewInit();
 	if(GLEW_OK != glew_status)
 	{
-		logWarning("Could not init glew: %s\n",glewGetErrorString(glew_status));
-		return -3;
+		logWarning("Could not init glew: %s\n", glewGetErrorString(glew_status));
+		return;
 	}
 	if(!GLEW_VERSION_2_0)
 	{
 		logWarning("No support for OpenGL 2.0 found\n");
-		return -4;
+		return;
 	}
 	
-	return 0;
+	valid = true;
 }
 
-void _Media_disposeGraphics(Media_PlatformContext *context)
+DesktopGraphics::~DesktopGraphics()
 {
-	SDL_GL_DeleteContext(context->context);
-	SDL_DestroyWindow(context->window);
+	SDL_GL_DeleteContext(context);
+	SDL_DestroyWindow(window);
 }
 
+bool DesktopGraphics::isValid() const {
+	return valid;
+}
+
+SDL_Window *DesktopGraphics::getWindow() {
+	return window;
+}
+
+SDL_GLContext DesktopGraphics::getGLContext() {
+	return context;
+}
+
+void DesktopGraphics::setHandler(Handler *h) {
+	handler = h;
+	handler->super = this;
+}
+
+Graphics::Handler *DesktopGraphics::getHandler() const {
+	return handler;
+}
