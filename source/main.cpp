@@ -1,6 +1,6 @@
 #include <media/media.hpp>
 
-class MyApp : public media::App {
+class AppHandler : public media::App::Handler {
 public:
 	virtual void create() override {
 		logMessage("app created");
@@ -9,6 +9,6 @@ public:
 	virtual void destroy() override {
 		logMessage("app destroyed");
 	}
-};
+} app_handler;
 
-MEDIA_SET_APP(MyApp)
+MEDIA_SET_APP_HANDLER(&app_handler);
