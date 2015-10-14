@@ -2,6 +2,9 @@
 
 class GraphicsHandler : public media::Graphics::Handler {
 public:
+	GraphicsHandler() = default;
+	virtual ~GraphicsHandler() = default;
+	
 	virtual void create() override {
 		logMessage("graphics created");
 	}
@@ -17,6 +20,9 @@ public:
 
 class PointerHandler : public media::Pointer::Handler {
 public:
+	PointerHandler() = default;
+	virtual ~PointerHandler() = default;
+	
 	virtual void move(int buttons, ivec2 from, ivec2 to) override {
 		logMessage(
 		      "pointer moved from {%d, %d} to {%d, %d}, buttons: %d",
@@ -66,6 +72,6 @@ public:
 		delete super->getPointer()->getHandler();
 		logMessage("app destroyed");
 	}
-} app_handler;
+};
 
-MEDIA_SET_APP_HANDLER(&app_handler);
+MEDIA_SET_APP_HANDLER(AppHandler)
