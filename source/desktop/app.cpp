@@ -17,8 +17,8 @@ void DesktopApp::create() {
 }
 
 void DesktopApp::destroy() {
-	getHandler()->destroy();
 	getGraphics()->destroy();
+	getHandler()->destroy();
 }
 
 DesktopGraphics *DesktopApp::getGraphics() {

@@ -2,8 +2,6 @@
 
 #include <media/graphics.hpp>
 
-#include <exception>
-
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
 
@@ -15,7 +13,7 @@ private:
 	SDL_GLContext context;
 	bool valid = false;
 	
-	Handler *handler;
+	Handler *handler = nullptr;
 	
 public:
 	DesktopGraphics();

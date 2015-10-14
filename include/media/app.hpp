@@ -41,5 +41,6 @@ public:
 };
 }
 
-#define MEDIA_SET_APP_HANDLER(app_handler) \
-media::App::Handler *__app_handler = (app_handler)
+#define MEDIA_SET_APP_HANDLER(__AppHandler__) \
+	static __AppHandler__ __app_handler__; \
+	media::App::Handler *__app_handler = &__app_handler__;
