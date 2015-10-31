@@ -54,11 +54,11 @@ build:
 build/desktop:
 	mkdir -p build/desktop
 
-build/desktop/app: $(D_SOURCE) $(D_HEADERS)
+build/desktop/app: $(D_SOURCE) $(D_HEADERS) $(LIBMEDIA_D_LIB_FILE)
 	$(D_CXX) $(D_CFLAGS) $(D_LFLAGS) $(D_INCLUDES:%=-I%) $(D_LIB_DIRS:%=-L%) $(D_LIBS:%=-l%) $< -o $@
 
 build/web:
 	mkdir -p build/web
 
-build/web/app.js: $(W_SOURCE) $(W_HEADERS)
+build/web/app.js: $(W_SOURCE) $(W_HEADERS) $(LIBMEDIA_W_LIB_FILE)
 	$(W_CXX) $(W_CFLAGS) $(W_LFLAGS) $(W_INCLUDES:%=-I%) $(W_LIB_DIRS:%=-L%) $(W_LIBS:%=-l%) $< -o $@

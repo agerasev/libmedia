@@ -24,10 +24,12 @@ public:
 	virtual ~PointerHandler() = default;
 	
 	virtual void move(int buttons, ivec2 from, ivec2 to) override {
+		/*
 		logMessage(
 		      "pointer moved from {%d, %d} to {%d, %d}, buttons: %d",
 		      from.x(), from.y(), to.x(), to.y(), buttons
 		      );
+		*/
 	}
 	
 	virtual void up(int button, ivec2 pos, int index) override {
