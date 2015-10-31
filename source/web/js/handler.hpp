@@ -2,11 +2,13 @@
 
 #include <string>
 
+#include "canvas.hpp"
+
 class JSHandler {
 private:
 	std::string _name;
 	
 public:
-	JSHandler(const std::string &name);
+	JSHandler(JSCanvas *canvas);
 	virtual ~JSHandler();
 };

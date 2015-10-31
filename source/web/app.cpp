@@ -7,7 +7,7 @@ using namespace media;
 WebApp::WebApp() :
 	jscanvas("__libmedia_canvas"),
   graphics(&jscanvas),
-  pointer(jscanvas.getName())
+  pointer(&jscanvas)
 {
 	
 }

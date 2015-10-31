@@ -2,8 +2,8 @@
 
 using namespace media;
 
-WebPointer::WebPointer(const std::string &handler_name) :
-	jshandler(handler_name)
+WebPointer::WebPointer(JSCanvas *canvas) :
+	jshandler(canvas)
 {
 	
 }

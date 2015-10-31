@@ -1,6 +1,7 @@
 #pragma once
 
 #include <media/pointer.hpp>
+#include "js/canvas.hpp"
 #include "js/handler.hpp"
 
 namespace media {
@@ -12,7 +13,7 @@ public:
 	
 	Handler *handler;
 	
-	WebPointer(const std::string &handler_name);
+	WebPointer(JSCanvas *canvas);
 	virtual ~WebPointer() = default;
 	
 	virtual void setHandler(Handler *h) override;
