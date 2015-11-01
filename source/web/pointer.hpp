@@ -6,13 +6,18 @@
 
 namespace media {
 class WebPointer : public Pointer {
-public:
-	int buttons = 0;
+private:
+	JSCanvas *jscanvas;
 	JSHandler jshandler;
+	
+	int buttons = 0;
 	ivec2 position = nullivec2;
 	
 	Handler *handler;
 	
+	ivec2 center(ivec2 pos) const;
+	
+public:
 	WebPointer(JSCanvas *canvas);
 	virtual ~WebPointer() = default;
 	

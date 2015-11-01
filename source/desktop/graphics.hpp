@@ -27,6 +27,7 @@ public:
 	void destroy();
 	void resize();
 	void resize(int w, int h);
+	void draw();
 	
 	SDL_Window *getWindow();
 	SDL_GLContext getGLContext();

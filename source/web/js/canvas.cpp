@@ -14,14 +14,21 @@ std::string JSCanvas::getName() const {
 	return _name;
 }
 
-void JSCanvas::setBounds(int width, int height) {
+void JSCanvas::setBounds(int w, int h) {
+	width = w;
+	height = h;
 	eval(_name + ".width = " + std::to_string(width) + ";");
 	eval(_name + ".height = " + std::to_string(height) + ";");
 }
 
 ivec2 JSCanvas::getBounds() {
-	int w, h;
-	w = eval_int("return " + _name + ".width;");
-	h = eval_int("return " + _name + ".height;");
-	return ivec2(w, h);
+	return ivec2(width, height);
+}
+
+void JSCanvas::startAnimation() {
+	eval("window.requestAnimationFrame(__libmediaAnimate);");
+}
+
+void JSCanvas::stopAnimation() {
+	eval("window.requestAnimationFrame(null);");
 }

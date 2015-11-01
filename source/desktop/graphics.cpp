@@ -95,6 +95,12 @@ void DesktopGraphics::resize(int w, int h) {
 	resize();
 }
 
+void DesktopGraphics::draw() {
+	if(getHandler() != nullptr) {
+		getHandler()->draw();
+	}
+}
+
 SDL_Window *DesktopGraphics::getWindow() {
 	return window;
 }

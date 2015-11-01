@@ -29,6 +29,11 @@ int main(int argc, char *argv[]) {
 		while(SDL_PollEvent(&event)) {
 			done = handle(this_app, event);
 		}
+		
+		this_app->getGraphics()->draw();
+		
+		glFlush();
+		SDL_GL_SwapWindow(this_app->getGraphics()->getWindow());
 	}
 	
 	this_app->destroy();

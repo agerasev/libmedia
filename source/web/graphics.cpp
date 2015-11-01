@@ -23,9 +23,11 @@ void WebGraphics::create() {
 	if(getHandler() != nullptr) {
 		getHandler()->create();
 	}
+	jscanvas->startAnimation();
 }
 
 void WebGraphics::destroy() {
+	jscanvas->stopAnimation();
 	if(getHandler() != nullptr) {
 		getHandler()->destroy();
 	}
@@ -42,6 +44,12 @@ void WebGraphics::resize(int w, int h) {
 	width = w;
 	height = h;
 	resize();
+}
+
+void WebGraphics::draw() {
+	if(getHandler() != nullptr) {
+		getHandler()->draw();
+	}
 }
 
 JSCanvas *WebGraphics::getCanvas() {

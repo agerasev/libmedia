@@ -37,4 +37,8 @@ void libmedia_pointer_click(int x, int y, int bb) {
 void libmedia_pointer_scroll() {
 	logMessage("pointer scroll");
 }
+
+void libmedia_redraw_frame(int timestamp) {
+	__app->getGraphics()->draw();
+}
 }

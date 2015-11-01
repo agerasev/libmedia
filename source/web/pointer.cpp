@@ -2,8 +2,13 @@
 
 using namespace media;
 
+ivec2 WebPointer::center(ivec2 pos) const {
+	ivec2 d = jscanvas->getBounds()/2;
+	return ivec2(pos.x() - d.x(), d.y() - pos.y());
+}
+
 WebPointer::WebPointer(JSCanvas *canvas) :
-	jshandler(canvas)
+	jscanvas(canvas), jshandler(canvas)
 {
 	
 }
@@ -29,7 +34,7 @@ int WebPointer::getButtons() const {
 
 void WebPointer::move(ivec2 from, ivec2 to) {
 	if(handler != nullptr) {
-		handler->move(buttons, from, to);
+		handler->move(buttons, center(from), center(to));
 	}
 }
 
@@ -41,25 +46,25 @@ void WebPointer::move(ivec2 to) {
 void WebPointer::up(int button, ivec2 pos, int index) {
 	buttons &= ~button;
 	if(handler != nullptr) {
-		handler->up(buttons, pos, index);
+		handler->up(buttons, center(pos), index);
 	}
 }
 
 void WebPointer::down(int button, ivec2 pos, int index) {
 	buttons |= button;
 	if(handler != nullptr) {
-		handler->down(buttons, pos, index);
+		handler->down(buttons, center(pos), index);
 	}
 }
 
 void WebPointer::click(int button, ivec2 pos, int index) {
 	if(handler != nullptr) {
-		handler->click(buttons, pos, index);
+		handler->click(buttons, center(pos), index);
 	}
 }
 
 void WebPointer::scroll(ivec2 pos, ivec2 val) {
 	if(handler != nullptr) {
-		handler->scroll(pos, val);
+		handler->scroll(center(pos), val);
 	}
 }

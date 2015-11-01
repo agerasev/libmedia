@@ -22,6 +22,7 @@ public:
 	void destroy();
 	void resize();
 	void resize(int w, int h);
+	void draw();
 	
 	JSCanvas *getCanvas();
 	

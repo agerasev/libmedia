@@ -55,3 +55,11 @@ function __libmediaAttachHandler(elem) {
 	elem.oncontextmenu = __libmediaContextMenu;
 	elem.onmousemove = __libmediaMouseMove;
 }
+
+function __libmediaAnimate(ts) {
+	Module.ccall(
+	  'libmedia_redraw_frame', null, 
+	  ['number'], [ts]
+	);
+  window.requestAnimationFrame(__libmediaAnimate);
+}

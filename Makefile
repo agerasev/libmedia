@@ -128,7 +128,8 @@ MEDIA_W_LFLAGS= \
 		'_libmedia_pointer_down', \
 		'_libmedia_pointer_up', \
 		'_libmedia_pointer_click', \
-		'_libmedia_pointer_scroll' \
+		'_libmedia_pointer_scroll', \
+		'_libmedia_redraw_frame' \
 		]" \
 	-s NO_EXIT_RUNTIME=1
 

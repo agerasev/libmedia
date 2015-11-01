@@ -15,6 +15,7 @@ public:
 		virtual void create() {}
 		virtual void destroy() {}
 		virtual void resize(int, int) {}
+		virtual void draw() {}
 	};
 	
 public:
