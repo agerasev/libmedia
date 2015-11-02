@@ -1,3 +1,5 @@
+/* Mouse events */
+
 function __getEventX(e) {
 	return e.offsetX == undefined ? e.layerX : e.offsetX; 
 }
@@ -22,20 +24,7 @@ function __libmediaMouseUp(e) {
 	);
 }
 
-function __libmediaClick(e) {
-	Module.ccall(
-	  'libmedia_pointer_click', null, 
-	  ['number', 'number', 'number'], 
-	  [__getEventX(e), __getEventY(e), 0]
-	);
-}
-
 function __libmediaContextMenu(e) {
-	Module.ccall(
-	  'libmedia_pointer_click', null, 
-	  ['number', 'number', 'number'], 
-	  [__getEventX(e), __getEventY(e), 2]
-	);
 	e.preventDefault();
 	return false;
 }
@@ -51,9 +40,32 @@ function __libmediaMouseMove(e) {
 function __libmediaAttachHandler(elem) {
 	elem.onmousedown = __libmediaMouseDown;
 	elem.onmouseup = __libmediaMouseUp;
-	elem.onclick = __libmediaClick;
 	elem.oncontextmenu = __libmediaContextMenu;
 	elem.onmousemove = __libmediaMouseMove;
+}
+
+/* Animation */
+
+function __libmediaSuppressAnimation() {
+	__libmedia_anim_suppressed = 1;
+}
+
+function __libmediaAllowAnimation() {
+	__libmedia_anim_suppressed = 0;
+}
+
+function __libmediaStartAnimation() {
+	if(__libmedia_anim_suppressed != 1) {
+		window.requestAnimationFrame(__libmediaAnimate);
+	}
+}
+
+function __libmediaForceAnimation() {
+	window.requestAnimationFrame(__libmediaAnimate);
+}
+
+function __libmediaStopAnimation() {
+	window.requestAnimationFrame(undefined);
 }
 
 function __libmediaAnimate(ts) {
@@ -63,3 +75,19 @@ function __libmediaAnimate(ts) {
 	);
   window.requestAnimationFrame(__libmediaAnimate);
 }
+
+/* Loading custom scripts */
+
+function __loadScript(file, callback)
+{
+	var head = document.getElementsByTagName('head')[0];
+    var script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = file;
+    if(callback != undefined) {
+		script.onreadystatechange = callback;
+		script.onload = callback;
+	}
+	head.appendChild(script);
+}
+

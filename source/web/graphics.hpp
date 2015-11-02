@@ -9,6 +9,7 @@ class WebGraphics : public Graphics {
 private:
 	JSCanvas *jscanvas;
 	int width, height;
+	double lts = 0.0;
 	
 	Handler *handler;
 	
@@ -22,7 +23,7 @@ public:
 	void destroy();
 	void resize();
 	void resize(int w, int h);
-	void draw();
+	void draw(double dt);
 	
 	JSCanvas *getCanvas();
 	

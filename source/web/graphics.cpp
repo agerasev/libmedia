@@ -46,9 +46,12 @@ void WebGraphics::resize(int w, int h) {
 	resize();
 }
 
-void WebGraphics::draw() {
+void WebGraphics::draw(double ts) {
 	if(getHandler() != nullptr) {
-		getHandler()->draw();
+		if(lts == 0.0)
+			lts = ts;
+		getHandler()->draw(1e-3*(ts - lts));
+		lts = ts;
 	}
 }
 

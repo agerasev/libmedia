@@ -57,12 +57,6 @@ void WebPointer::down(int button, ivec2 pos, int index) {
 	}
 }
 
-void WebPointer::click(int button, ivec2 pos, int index) {
-	if(handler != nullptr) {
-		handler->click(buttons, center(pos), index);
-	}
-}
-
 void WebPointer::scroll(ivec2 pos, ivec2 val) {
 	if(handler != nullptr) {
 		handler->scroll(center(pos), val);

@@ -30,15 +30,11 @@ void libmedia_pointer_up(int x, int y, int bb) {
 	__app->getPointer()->up(bb_to_b(bb), ivec2(x, y));
 }
 
-void libmedia_pointer_click(int x, int y, int bb) {
-	__app->getPointer()->click(bb_to_b(bb), ivec2(x, y));
-}
-
 void libmedia_pointer_scroll() {
 	logMessage("pointer scroll");
 }
 
 void libmedia_redraw_frame(int timestamp) {
-	__app->getGraphics()->draw();
+	__app->getGraphics()->draw(timestamp);
 }
 }

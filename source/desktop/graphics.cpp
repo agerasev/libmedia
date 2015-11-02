@@ -97,7 +97,11 @@ void DesktopGraphics::resize(int w, int h) {
 
 void DesktopGraphics::draw() {
 	if(getHandler() != nullptr) {
-		getHandler()->draw();
+		int ts = SDL_GetTicks();
+		if(lts == 0)
+			lts = ts;
+		getHandler()->draw(1e-3*(ts - lts));
+		lts = ts;
 	}
 }
 

@@ -20,7 +20,6 @@ public:
 	void move(ivec2 from, ivec2 to);
 	void up(int button, ivec2 pos, int index = 0);
 	void down(int button, ivec2 pos, int index = 0);
-	void click(int button, ivec2 pos, int index = 0);
 	void scroll(ivec2 pos, ivec2 val);
 };
 }

@@ -45,12 +45,6 @@ void DesktopPointer::down(int button, ivec2 pos, int index) {
 	}
 }
 
-void DesktopPointer::click(int button, ivec2 pos, int index) {
-	if(handler != nullptr) {
-		handler->click(buttons, pos, index);
-	}
-}
-
 void DesktopPointer::scroll(ivec2 pos, ivec2 val) {
 	if(handler != nullptr) {
 		handler->scroll(pos, val);

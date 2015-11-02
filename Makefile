@@ -109,6 +109,9 @@ $(MEDIA_D_OBJ_DIR)/desktop/pointer.o: $(MEDIA_SOURCE_DIR)/desktop/pointer.cpp $(
 # Web #
 #######
 
+# Provides:
+#  MEDIA_W_EXPORTED_FUNCTIONS
+
 _MEDIA_W_SOURCE= \
 	web/app.cpp \
 	web/main.cpp \
@@ -122,16 +125,16 @@ MEDIA_W_SOURCE=$(_MEDIA_W_SOURCE:%=$(MEDIA_SOURCE_DIR)/%)
 
 MEDIA_W_CFLAGS=
 MEDIA_W_LFLAGS= \
-	-s EXPORTED_FUNCTIONS="[ \
-		'_main', \
-		'_libmedia_pointer_move', \
-		'_libmedia_pointer_down', \
-		'_libmedia_pointer_up', \
-		'_libmedia_pointer_click', \
-		'_libmedia_pointer_scroll', \
-		'_libmedia_redraw_frame' \
-		]" \
 	-s NO_EXIT_RUNTIME=1
+
+MEDIA_W_EXPORTED_FUNCTIONS=\
+	_main \
+	_libmedia_pointer_move \
+	_libmedia_pointer_down \
+	_libmedia_pointer_up \
+	_libmedia_pointer_click \
+	_libmedia_pointer_scroll \
+	_libmedia_redraw_frame
 
 MEDIA_W_HEADERS=
 MEDIA_W_INCLUDES=

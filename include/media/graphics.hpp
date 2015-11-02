@@ -15,7 +15,7 @@ public:
 		virtual void create() {}
 		virtual void destroy() {}
 		virtual void resize(int, int) {}
-		virtual void draw() {}
+		virtual void draw(double) {}
 	};
 	
 public:

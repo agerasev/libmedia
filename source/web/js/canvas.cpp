@@ -26,9 +26,9 @@ ivec2 JSCanvas::getBounds() {
 }
 
 void JSCanvas::startAnimation() {
-	eval("window.requestAnimationFrame(__libmediaAnimate);");
+	eval("__libmediaStartAnimation();");
 }
 
 void JSCanvas::stopAnimation() {
-	eval("window.requestAnimationFrame(null);");
+	eval("__libmediaStopAnimation();");
 }

@@ -12,6 +12,7 @@ private:
 	SDL_Window *window;
 	SDL_GLContext context;
 	bool valid = false;
+	int lts = 0;
 	
 	Handler *handler = nullptr;
 	
