@@ -45,22 +45,7 @@ function __libmediaAttachHandler(elem) {
 }
 
 /* Animation */
-
-function __libmediaSuppressAnimation() {
-	__libmedia_anim_suppressed = 1;
-}
-
-function __libmediaAllowAnimation() {
-	__libmedia_anim_suppressed = 0;
-}
-
 function __libmediaStartAnimation() {
-	if(__libmedia_anim_suppressed != 1) {
-		window.requestAnimationFrame(__libmediaAnimate);
-	}
-}
-
-function __libmediaForceAnimation() {
 	window.requestAnimationFrame(__libmediaAnimate);
 }
 
@@ -73,7 +58,7 @@ function __libmediaAnimate(ts) {
 	  'libmedia_redraw_frame', null, 
 	  ['number'], [ts]
 	);
-  window.requestAnimationFrame(__libmediaAnimate);
+	window.requestAnimationFrame(__libmediaAnimate);
 }
 
 /* Loading custom scripts */
