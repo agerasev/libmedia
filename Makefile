@@ -4,6 +4,7 @@
 
 # Requires:
 #  MEDIA_DIR
+#  LIBLA_DIR
 
 # Provides:
 #  MEDIA_HEADERS
@@ -21,7 +22,7 @@ _MEDIA_HEADERS= \
 	include/media/sensor.hpp
 MEDIA_HEADERS=$(_MEDIA_HEADERS:%=$(MEDIA_DIR)/%)
 
-_MEDIA_INCLUDES=include libla
+_MEDIA_INCLUDES=include
 MEDIA_INCLUDES=$(_MEDIA_INCLUDES:%=$(MEDIA_DIR)/%)
 
 MEDIA_CFLAGS=-std=c++11 -Wall
@@ -57,7 +58,7 @@ _MEDIA_D_LOCAL_HEADERS= \
 MEDIA_D_LOCAL_HEADERS=$(_MEDIA_D_LOCAL_HEADERS:%=$(MEDIA_SOURCE_DIR)/%)
 
 MEDIA_D_LOCAL_CFLAGS=
-MEDIA_D_LOCAL_INCLUDES=
+MEDIA_D_LOCAL_INCLUDES=$(LIBLA_DIR)
 
 _MEDIA_D_SOURCE_DIRS=desktop
 
@@ -132,7 +133,6 @@ MEDIA_W_EXPORTED_FUNCTIONS=\
 	_libmedia_pointer_move \
 	_libmedia_pointer_down \
 	_libmedia_pointer_up \
-	_libmedia_pointer_click \
 	_libmedia_pointer_scroll \
 	_libmedia_redraw_frame
 
@@ -161,7 +161,7 @@ _MEDIA_W_LOCAL_HEADERS= \
 MEDIA_W_LOCAL_HEADERS=$(_MEDIA_W_LOCAL_HEADERS:%=$(MEDIA_SOURCE_DIR)/%)
 
 MEDIA_W_LOCAL_CFLAGS=
-MEDIA_W_LOCAL_INCLUDES=
+MEDIA_W_LOCAL_INCLUDES=$(LIBLA_DIR)
 
 _MEDIA_W_SOURCE_DIRS=web web/js
 
